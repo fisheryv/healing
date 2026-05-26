@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>希音 — 画廊</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+:root{
+  --bg:#F9F7F4;--surface:#FFFFFF;--surface-2:#F3F1EE;
+  --fg:#1E2A3A;--muted:#6B7A8A;--subtle:#A0ABB5;--border:#E5E1D8;
+  --accent:#5B9B85;--accent-l:#D4EBE3;
+  --canvas:#0D1218;
+  --ff-serif:'Iowan Old Style',Georgia,'Times New Roman',serif;
+  --ff-sans:-apple-system,'SF Pro Text',system-ui,sans-serif;
+}
+body{background:#111315;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:var(--ff-sans);}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:47px;position:relative;overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 0 1px #2a2a2a;}
+.dyn{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:126px;height:37px;background:#000;border-radius:20px;z-index:100;}
+.sb{position:absolute;top:0;left:0;right:0;height:59px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 10px;z-index:50;pointer-events:none;}
+.sb-t{font-size:15px;font-weight:600;color:var(--fg);letter-spacing:-.3px;}
+.sb-i{display:flex;align-items:center;gap:6px;}
+.content{position:absolute;top:59px;bottom:83px;left:0;right:0;overflow-y:auto;background:var(--bg);}
+.content::-webkit-scrollbar{display:none;}
+.tab-bar{position:absolute;bottom:0;left:0;right:0;height:83px;background:rgba(249,247,244,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;align-items:flex-start;padding-top:10px;z-index:50;}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;}
+.tab-label{font-size:10px;color:var(--subtle);}
+.tab-item.active .tab-label{color:var(--accent);}
+.hi{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;background:var(--fg);border-radius:3px;opacity:.18;z-index:100;}
+
+.page-title{font-family:var(--ff-serif);font-size:28px;color:var(--fg);padding:20px 22px 16px;}
+
+/* Filter tabs */
+.filter-tabs{display:flex;gap:8px;padding:0 22px 16px;}
+.filter-tab{padding:6px 16px;border-radius:20px;font-size:13px;color:var(--muted);border:1px solid var(--border);cursor:pointer;background:var(--surface);transition:all .2s;}
+.filter-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 22px 24px;}
+.grid-item{position:relative;border-radius:14px;overflow:hidden;cursor:pointer;aspect-ratio:1;}
+.grid-item.relic{opacity:.7;}
+.art-thumb{width:100%;height:100%;background:var(--canvas);display:flex;align-items:center;justify-content:center;}
+.art-meta{position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);}
+.art-date{font-size:10px;color:rgba(255,255,255,.8);letter-spacing:.3px;}
+.relic-badge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:10px;padding:3px 7px;border-radius:10px;}
+
+/* Detail overlay */
+.detail-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--canvas);display:none;flex-direction:column;z-index:200;overflow-y:auto;}
+.detail-overlay::-webkit-scrollbar{display:none;}
+.detail-overlay.active{display:flex;}
+.detail-art{width:100%;height:320px;position:relative;flex-shrink:0;}
+.detail-art canvas{width:100%;height:100%;}
+.detail-close{position:absolute;top:70px;left:18px;width:36px;height:36px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;}
+.detail-share{position:absolute;top:70px;right:18px;width:36px;height:36px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;}
+.detail-body{background:var(--bg);border-radius:24px 24px 0 0;margin-top:-24px;padding:28px 22px 40px;flex:1;}
+.quote-en{font-family:var(--ff-serif);font-size:16px;color:var(--fg);line-height:1.7;margin-bottom:12px;font-style:italic;}
+.quote-zh{font-size:13px;color:var(--muted);line-height:1.6;border-left:2px solid var(--accent-l);padding-left:12px;margin-bottom:24px;}
+.info-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+.info-row:last-child{border-bottom:none;}
+.info-label{font-size:13px;color:var(--muted);}
+.info-value{font-family:var(--ff-serif);font-size:14px;color:var(--fg);}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="dyn"></div>
+  <div class="sb">
+    <span class="sb-t">9:41</span>
+    <div class="sb-i">
+      <svg width="17" height="12" fill="none"><rect x="0" y="6" width="3" height="6" rx="1" fill="#1E2A3A"/><rect x="4.5" y="4" width="3" height="8" rx="1" fill="#1E2A3A"/><rect x="9" y="2" width="3" height="10" rx="1" fill="#1E2A3A"/><rect x="13.5" y="0" width="3" height="12" rx="1" fill="#1E2A3A"/></svg>
+      <svg width="16" height="12" fill="none"><path d="M8 9.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" fill="#1E2A3A"/><path d="M2.5 6.5A7.7 7.7 0 018 4.3a7.7 7.7 0 015.5 2.2" stroke="#1E2A3A" stroke-width="1.5" stroke-linecap="round"/><path d="M0 4A11.5 11.5 0 018 .8 11.5 11.5 0 0116 4" stroke="#1E2A3A" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <svg width="25" height="12" fill="none"><rect x=".5" y=".5" width="21" height="11" rx="2.5" stroke="#1E2A3A" stroke-opacity=".35"/><rect x="2" y="2" width="16" height="8" rx="1.5" fill="#1E2A3A"/><path d="M23 4v4a2 2 0 000-4z" fill="#1E2A3A" fill-opacity=".4"/></svg>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="page-title">画廊</div>
+
+    <div class="filter-tabs">
+      <div class="filter-tab active" onclick="filterGallery(this,'all')">全部</div>
+      <div class="filter-tab" onclick="filterGallery(this,'done')">已完成</div>
+      <div class="filter-tab" onclick="filterGallery(this,'relic')">残卷</div>
+    </div>
+
+    <div class="grid" id="gallery-grid">
+      <!-- Items will be rendered by JS -->
+    </div>
+  </div>
+
+  <!-- Detail Page -->
+  <div class="detail-overlay" id="detail-overlay">
+    <div class="detail-art">
+      <canvas id="detail-canvas" width="390" height="320"></canvas>
+      <div class="detail-close" onclick="closeDetail()">
+        <svg width="14" height="14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+      <div class="detail-share">
+        <svg width="16" height="16" fill="none"><path d="M14 8v6a1 1 0 01-1 1H3a1 1 0 01-1-1V8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><path d="M10 4L8 2 6 4M8 2v8" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div class="quote-en" id="quote-en">"The present moment always will have been."</div>
+      <div class="quote-zh" id="quote-zh">此刻，终将永远曾经存在过。专注的每一分钟，都已铸成不可撤销的过去。</div>
+      <div class="info-row"><span class="info-label">创作日期</span><span class="info-value">2026年5月23日 · 22:14</span></div>
+      <div class="info-row"><span class="info-label">专注时长</span><span class="info-value">25 分钟</span></div>
+      <div class="info-row"><span class="info-label">曲线类型</span><span class="info-value">李萨如曲线</span></div>
+      <div class="info-row"><span class="info-label">音乐组合</span><span class="info-value">Lo-fi Rain · 雨声 · Alpha 波</span></div>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item" onclick="window.location='02-home.html'">
+      <svg width="24" height="24" fill="none"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H5a1 1 0 01-1-1V10.5z" stroke="#A0ABB5" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 22V12h6v10" stroke="#A0ABB5" stroke-width="1.5"/></svg>
+      <span class="tab-label">首页</span>
+    </div>
+    <div class="tab-item" onclick="window.location='04-library.html'">
+      <svg width="24" height="24" fill="none"><circle cx="12" cy="12" r="9" stroke="#A0ABB5" stroke-width="1.5"/><path d="M9 8v8M15 8v8M9 12h6" stroke="#A0ABB5" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="tab-label">曲库</span>
+    </div>
+    <div class="tab-item" onclick="window.location='05-mixer.html'">
+      <svg width="24" height="24" fill="none"><path d="M4 6h3M4 12h7M4 18h12" stroke="#A0ABB5" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="6" r="2" stroke="#A0ABB5" stroke-width="1.5"/><circle cx="13" cy="12" r="2" stroke="#A0ABB5" stroke-width="1.5"/><circle cx="18" cy="18" r="2" stroke="#A0ABB5" stroke-width="1.5"/></svg>
+      <span class="tab-label">调音台</span>
+    </div>
+    <div class="tab-item active">
+      <svg width="24" height="24" fill="none"><rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#5B9B85" stroke-width="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#5B9B85" stroke-width="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#5B9B85" stroke-width="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5" stroke="#5B9B85" stroke-width="1.5"/></svg>
+      <span class="tab-label" style="color:#5B9B85">画廊</span>
+    </div>
+    <div class="tab-item" onclick="window.location='07-profile.html'">
+      <svg width="24" height="24" fill="none"><circle cx="12" cy="8" r="4" stroke="#A0ABB5" stroke-width="1.5"/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="#A0ABB5" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="tab-label">我的</span>
+    </div>
+  </div>
+  <div class="hi"></div>
+</div>
+
+<script>
+const artworks=[
+  {id:0,type:'complete',date:'2026.05.24',dur:'25 min',curve:'lissajous',hue:200},
+  {id:1,type:'complete',date:'2026.05.22',dur:'40 min',curve:'rhodonea',hue:140},
+  {id:2,type:'relic',date:'2026.05.21',dur:'12 min',curve:'hypotrochoid',hue:280},
+  {id:3,type:'complete',date:'2026.05.20',dur:'30 min',curve:'spiral',hue:30},
+  {id:4,type:'complete',date:'2026.05.18',dur:'25 min',curve:'butterfly',hue:320},
+  {id:5,type:'relic',date:'2026.05.16',dur:'8 min',curve:'lissajous',hue:170},
+];
+
+function drawArtThumb(canvas,hue,opacity=1){
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  ctx.fillStyle='#0D1218';ctx.fillRect(0,0,W,H);
+  const cx=W/2,cy=H/2,R=Math.min(W,H)*0.38;
+  const a=3,b=2,delta=Math.PI/4;
+  ctx.globalAlpha=opacity;
+  for(let t=0;t<=4*Math.PI;t+=0.02){
+    const x=cx+R*Math.sin(a*t+delta);
+    const y=cy+R*Math.sin(b*t);
+    const alpha=0.5+0.5*Math.sin(t);
+    ctx.beginPath();ctx.arc(x,y,0.8,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${hue},40%,70%,${alpha})`;ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function renderGrid(filter='all'){
+  const grid=document.getElementById('gallery-grid');
+  grid.innerHTML='';
+  artworks.filter(a=>filter==='all'||(filter==='done'&&a.type==='complete')||(filter==='relic'&&a.type==='relic'))
+    .forEach(art=>{
+      const item=document.createElement('div');
+      item.className='grid-item'+(art.type==='relic'?' relic':'');
+      item.innerHTML=`
+        <div class="art-thumb"><canvas width="160" height="160" id="thumb-${art.id}"></canvas></div>
+        <div class="art-meta"><div class="art-date">${art.date} · ${art.dur}</div></div>
+        ${art.type==='relic'?'<div class="relic-badge">残卷</div>':''}
+      `;
+      item.onclick=()=>openDetail(art);
+      grid.appendChild(item);
+      setTimeout(()=>{
+        const c=document.getElementById('thumb-'+art.id);
+        if(c)drawArtThumb(c,art.hue,art.type==='relic'?0.5:1);
+      },10);
+    });
+}
+renderGrid();
+
+function filterGallery(btn,filter){
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');renderGrid(filter);
+}
+
+function openDetail(art){
+  document.getElementById('detail-overlay').classList.add('active');
+  const canvas=document.getElementById('detail-canvas');
+  canvas.width=390;canvas.height=320;
+  drawArtThumb(canvas,art.hue,art.type==='relic'?0.5:1);
+}
+function closeDetail(){document.getElementById('detail-overlay').classList.remove('active');}
+</script>
+</body>
+</html>

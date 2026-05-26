@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>希音 — 首页</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+:root{
+  --bg:#F9F7F4;--surface:#FFFFFF;--surface-2:#F3F1EE;
+  --fg:#1E2A3A;--muted:#6B7A8A;--subtle:#A0ABB5;--border:#E5E1D8;
+  --accent:#5B9B85;--accent-l:#D4EBE3;--accent-d:#3D7A68;
+  --ff-serif:'Iowan Old Style',Georgia,'Times New Roman',serif;
+  --ff-sans:-apple-system,'SF Pro Text',system-ui,sans-serif;
+}
+body{background:#111315;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:var(--ff-sans);}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:47px;position:relative;overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 0 1px #2a2a2a;}
+.dyn{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:126px;height:37px;background:#000;border-radius:20px;z-index:100;}
+.sb{position:absolute;top:0;left:0;right:0;height:59px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 10px;z-index:50;pointer-events:none;}
+.sb-t{font-size:15px;font-weight:600;color:var(--fg);letter-spacing:-.3px;}
+.sb-i{display:flex;align-items:center;gap:6px;}
+.content{position:absolute;top:59px;bottom:83px;left:0;right:0;overflow-y:auto;overflow-x:hidden;background:var(--bg);}
+.content::-webkit-scrollbar{display:none;}
+.tab-bar{position:absolute;bottom:0;left:0;right:0;height:83px;background:rgba(249,247,244,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;align-items:flex-start;padding-top:10px;z-index:50;}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;}
+.tab-label{font-size:10px;color:var(--subtle);}
+.tab-item.active .tab-label{color:var(--accent);}
+.hi{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;background:var(--fg);border-radius:3px;opacity:.18;z-index:100;}
+
+/* Home page */
+.home-header{padding:24px 22px 16px;}
+.welcome-small{font-size:13px;color:var(--muted);margin-bottom:6px;letter-spacing:.2px;}
+.welcome-big{font-family:var(--ff-serif);font-size:30px;line-height:1.2;color:var(--fg);font-weight:normal;}
+.welcome-big span{display:block;}
+
+/* Focus card */
+.focus-card{margin:0 22px 24px;background:linear-gradient(135deg,#4A8A74 0%,#5B9B85 50%,#6DAF98 100%);border-radius:20px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;min-height:110px;position:relative;overflow:hidden;}
+.focus-card::before{content:'';position:absolute;top:-20px;right:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);}
+.focus-card::after{content:'';position:absolute;bottom:-30px;right:20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.06);}
+.focus-card-text{position:relative;z-index:1;}
+.focus-card-title{font-family:var(--ff-serif);font-size:17px;color:rgba(255,255,255,.9);line-height:1.4;margin-bottom:14px;}
+.btn-start{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.95);color:var(--accent-d);border:none;border-radius:20px;padding:8px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff-sans);}
+.focus-card-art{position:relative;z-index:1;width:80px;height:80px;flex-shrink:0;}
+
+/* Section */
+.section-head{display:flex;align-items:center;justify-content:space-between;padding:0 22px;margin-bottom:14px;}
+.section-title{font-family:var(--ff-serif);font-size:19px;color:var(--fg);}
+.section-more{font-size:13px;color:var(--muted);}
+
+/* Recommend cards */
+.recommend-scroll{padding:0 22px;display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;margin-bottom:24px;}
+.recommend-scroll::-webkit-scrollbar{display:none;}
+.rec-card{flex-shrink:0;width:140px;cursor:pointer;}
+.rec-cover{width:140px;height:140px;border-radius:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.rec-title{font-family:var(--ff-serif);font-size:14px;color:var(--fg);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rec-tag{font-size:11px;color:var(--muted);}
+
+/* Collections */
+.collection-list{padding:0 22px;margin-bottom:24px;}
+.collection-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.collection-item:last-child{border-bottom:none;}
+.coll-thumb{width:44px;height:44px;border-radius:8px;flex-shrink:0;}
+.coll-info{flex:1;min-width:0;}
+.coll-name{font-size:15px;color:var(--fg);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--ff-serif);}
+.coll-meta{font-size:12px;color:var(--muted);}
+.coll-dur{font-size:12px;color:var(--subtle);font-variant-numeric:tabular-nums;}
+
+/* Blog */
+.blog-list{padding:0 22px 24px;display:flex;flex-direction:column;gap:16px;}
+.blog-item{display:flex;gap:14px;cursor:pointer;}
+.blog-info{flex:1;}
+.blog-title{font-family:var(--ff-serif);font-size:15px;color:var(--fg);line-height:1.4;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.blog-excerpt{font-size:13px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:4px;}
+.blog-date{font-size:11px;color:var(--subtle);letter-spacing:.3px;}
+.blog-thumb{width:72px;height:72px;border-radius:10px;flex-shrink:0;}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="dyn"></div>
+  <div class="sb">
+    <span class="sb-t">9:41</span>
+    <div class="sb-i">
+      <svg width="17" height="12" fill="none"><rect x="0" y="6" width="3" height="6" rx="1" fill="#1E2A3A"/><rect x="4.5" y="4" width="3" height="8" rx="1" fill="#1E2A3A"/><rect x="9" y="2" width="3" height="10" rx="1" fill="#1E2A3A"/><rect x="13.5" y="0" width="3" height="12" rx="1" fill="#1E2A3A"/></svg>
+      <svg width="16" height="12" fill="none"><path d="M8 9.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" fill="#1E2A3A"/><path d="M2.5 6.5A7.7 7.7 0 018 4.3a7.7 7.7 0 015.5 2.2" stroke="#1E2A3A" stroke-width="1.5" stroke-linecap="round"/><path d="M0 4A11.5 11.5 0 018 .8 11.5 11.5 0 0116 4" stroke="#1E2A3A" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <svg width="25" height="12" fill="none"><rect x=".5" y=".5" width="21" height="11" rx="2.5" stroke="#1E2A3A" stroke-opacity=".35"/><rect x="2" y="2" width="16" height="8" rx="1.5" fill="#1E2A3A"/><path d="M23 4v4a2 2 0 000-4z" fill="#1E2A3A" fill-opacity=".4"/></svg>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="home-header">
+      <div class="welcome-small">Welcome Back, Fisher</div>
+      <div class="welcome-big"><span>How are you feeling</span><span>today?</span></div>
+    </div>
+
+    <!-- Focus Entry Card -->
+    <div class="focus-card" onclick="window.location='03-focus.html'">
+      <div class="focus-card-text">
+        <div class="focus-card-title">开启今日的<br>专注之旅</div>
+        <button class="btn-start">
+          <svg width="12" height="12" fill="none"><path d="M3 2l7 4-7 4V2z" fill="currentColor"/></svg>
+          开始
+        </button>
+      </div>
+      <div class="focus-card-art">
+        <svg viewBox="0 0 80 80" fill="none">
+          <path d="M40 5 C55 5,75 20,75 40 C75 60,55 75,40 75 C25 75,5 60,5 40 C5 20,25 5,40 5Z" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+          <path d="M10 40 C10 22,28 10,40 22 C52 34,70 26,70 40 C70 54,52 62,40 50 C28 38,10 58,10 40Z" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" fill="none"/>
+          <circle cx="40" cy="40" r="5" fill="rgba(255,255,255,0.6)"/>
+          <circle cx="22" cy="30" r="2" fill="rgba(255,255,255,0.3)"/>
+          <circle cx="58" cy="50" r="2" fill="rgba(255,255,255,0.3)"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Recommend section -->
+    <div class="section-head">
+      <div class="section-title">推荐</div>
+      <div class="section-more">更多 ›</div>
+    </div>
+    <div class="recommend-scroll">
+      <div class="rec-card">
+        <div class="rec-cover" style="background:linear-gradient(135deg,#DDD8F5,#C8CCF0);">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M8 24 C8 14,20 6,24 14 C28 22,40 16,40 24 C40 34,28 42,24 34 C20 26,8 34,8 24Z" stroke="rgba(100,90,180,0.6)" stroke-width="1.5" fill="none"/><circle cx="24" cy="24" r="3" fill="rgba(100,90,180,0.5)"/></svg>
+        </div>
+        <div class="rec-title">Quiet Mind</div>
+        <div class="rec-tag">Lo-fi · 专注</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-cover" style="background:linear-gradient(135deg,#C8E0D4,#B8D4C8);">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M24 8 C32 8,42 16,40 24 C38 32,28 40,24 38 C20 36,6 30,8 22 C10 14,16 8,24 8Z" stroke="rgba(60,130,100,0.6)" stroke-width="1.5" fill="none"/><circle cx="24" cy="24" r="3" fill="rgba(60,130,100,0.5)"/></svg>
+        </div>
+        <div class="rec-title">Forest Rain</div>
+        <div class="rec-tag">Classical · 阅读</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-cover" style="background:linear-gradient(135deg,#F5E8CC,#F0D8B8);">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M12 16 C12 10,36 8,40 20 C44 32,30 44,24 40 C18 36,4 34,8 26 C10 20,12 22,12 16Z" stroke="rgba(160,110,50,0.6)" stroke-width="1.5" fill="none"/><circle cx="24" cy="24" r="3" fill="rgba(160,110,50,0.5)"/></svg>
+        </div>
+        <div class="rec-title">Deep Work</div>
+        <div class="rec-tag">Ambient · 工作</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-cover" style="background:linear-gradient(135deg,#CCE5F5,#B8D8F0);">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M8 28 C8 14,24 4,34 12 C44 20,46 36,36 42 C26 48,8 42,8 28Z" stroke="rgba(50,100,160,0.6)" stroke-width="1.5" fill="none"/><circle cx="24" cy="24" r="3" fill="rgba(50,100,160,0.5)"/></svg>
+        </div>
+        <div class="rec-title">Alpha State</div>
+        <div class="rec-tag">Binaural · 冥想</div>
+      </div>
+    </div>
+
+    <!-- Collections -->
+    <div class="section-head">
+      <div class="section-title">我的收藏</div>
+      <div class="section-more">更多 ›</div>
+    </div>
+    <div class="collection-list">
+      <div class="collection-item">
+        <div class="coll-thumb" style="background:linear-gradient(135deg,#DDD8F5,#C8CCF0);border-radius:8px;"></div>
+        <div class="coll-info">
+          <div class="coll-name">Quiet Mind</div>
+          <div class="coll-meta">Lo-fi · 专注</div>
+        </div>
+        <div class="coll-dur">32:14</div>
+      </div>
+      <div class="collection-item">
+        <div class="coll-thumb" style="background:linear-gradient(135deg,#C8E0D4,#B8D4C8);border-radius:8px;"></div>
+        <div class="coll-info">
+          <div class="coll-name">Forest Rain</div>
+          <div class="coll-meta">Classical · 阅读</div>
+        </div>
+        <div class="coll-dur">45:02</div>
+      </div>
+      <div class="collection-item">
+        <div class="coll-thumb" style="background:linear-gradient(135deg,#F5E8CC,#F0D8B8);border-radius:8px;"></div>
+        <div class="coll-info">
+          <div class="coll-name">Deep Work</div>
+          <div class="coll-meta">Ambient · 工作</div>
+        </div>
+        <div class="coll-dur">58:30</div>
+      </div>
+    </div>
+
+    <!-- Blog section -->
+    <div class="section-head">
+      <div class="section-title">Blog</div>
+      <div class="section-more">更多 ›</div>
+    </div>
+    <div class="blog-list">
+      <div class="blog-item">
+        <div class="blog-info">
+          <div class="blog-title">双耳节拍如何帮助大脑进入专注状态</div>
+          <div class="blog-excerpt">双耳节拍是一种利用两耳间频率差异诱导大脑同步的听觉幻觉技术……</div>
+          <div class="blog-date">2026 · 05 · 22</div>
+        </div>
+        <div class="blog-thumb" style="background:linear-gradient(135deg,#D4EBE3,#C0DDD4);border-radius:10px;"></div>
+      </div>
+      <div class="blog-item">
+        <div class="blog-info">
+          <div class="blog-title">ADHD 人群的专注音乐指南</div>
+          <div class="blog-excerpt">研究表明，特定频率的背景音乐能有效延长 ADHD 群体的持续注意时长……</div>
+          <div class="blog-date">2026 · 05 · 18</div>
+        </div>
+        <div class="blog-thumb" style="background:linear-gradient(135deg,#DDD8F5,#CCCAF0);border-radius:10px;"></div>
+      </div>
+      <div class="blog-item">
+        <div class="blog-info">
+          <div class="blog-title">程序化生成艺术：用数学画出内心的平静</div>
+          <div class="blog-excerpt">希音的每幅专注画作都是一段数学方程的视觉化——李萨如曲线、玫瑰线……</div>
+          <div class="blog-date">2026 · 05 · 14</div>
+        </div>
+        <div class="blog-thumb" style="background:linear-gradient(135deg,#F5E8CC,#EED8B4);border-radius:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item active" onclick="window.location='02-home.html'">
+      <svg width="24" height="24" fill="none"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H5a1 1 0 01-1-1V10.5z" stroke="#5B9B85" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 22V12h6v10" stroke="#5B9B85" stroke-width="1.5"/></svg>
+      <span class="tab-label" style="color:#5B9B85">首页</span>
+    </div>
+    <div class="tab-item" onclick="window.location='04-library.html'">
+      <svg width="24" height="24" fill="none"><circle cx="12" cy="12" r="9" stroke="#A0ABB5" stroke-width="1.5"/><path d="M9 8v8M15 8v8M9 12h6" stroke="#A0ABB5" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="tab-label">曲库</span>
+    </div>
+    <div class="tab-item" onclick="window.location='05-mixer.html'">
+      <svg width="24" height="24" fill="none"><path d="M4 6h3M4 12h7M4 18h12" stroke="#A0ABB5" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="6" r="2" stroke="#A0ABB5" stroke-width="1.5"/><circle cx="13" cy="12" r="2" stroke="#A0ABB5" stroke-width="1.5"/><circle cx="18" cy="18" r="2" stroke="#A0ABB5" stroke-width="1.5"/></svg>
+      <span class="tab-label">调音台</span>
+    </div>
+    <div class="tab-item" onclick="window.location='06-gallery.html'">
+      <svg width="24" height="24" fill="none"><rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#A0ABB5" stroke-width="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#A0ABB5" stroke-width="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#A0ABB5" stroke-width="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5" stroke="#A0ABB5" stroke-width="1.5"/></svg>
+      <span class="tab-label">画廊</span>
+    </div>
+    <div class="tab-item" onclick="window.location='07-profile.html'">
+      <svg width="24" height="24" fill="none"><circle cx="12" cy="8" r="4" stroke="#A0ABB5" stroke-width="1.5"/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="#A0ABB5" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="tab-label">我的</span>
+    </div>
+  </div>
+  <div class="hi"></div>
+</div>
+</body>
+</html>
