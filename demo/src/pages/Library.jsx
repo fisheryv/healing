@@ -16,7 +16,7 @@ export default function Library() {
   return (
     <div>
       <div className="page-pad" style={{ paddingBottom: 0 }}>
-        <h1 className="page-title cn">曲库</h1>
+        <h1 className="page-title cn">Library</h1>
       </div>
 
       <div className="tab-bar">
@@ -36,22 +36,25 @@ export default function Library() {
           <div className="search">
             <input
               type="text"
-              placeholder="搜索歌曲 / 风格"
+              placeholder="name/ tag / genre / style"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="list page-pad">
             {filtered.map((m) => (
-              <div className="row" key={m.id}>
-                <div className="thumb">♪</div>
+              <div className="row" key={m.id} onClick={() => nav(`/player/${m.id}`)} style={{ cursor: 'pointer' }}>
+                <div className="thumb"><img src={m.cover} alt="" /></div>
                 <div className="info">
                   <div className="name">{m.name}</div>
                   <div className="meta">{m.tag} · {m.duration}</div>
                 </div>
                 <div
                   className={'heart' + (favorites.includes(m.id) ? ' active' : '')}
-                  onClick={() => toggleFavorite(m.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleFavorite(m.id)
+                  }}
                 >
                   {favorites.includes(m.id) ? '♥' : '♡'}
                 </div>
@@ -66,8 +69,8 @@ export default function Library() {
           {presets.length === 0 ? (
             <div className="empty">
               <div className="icon" />
-              <p>还没有创建过混音方案</p>
-              <button className="btn" onClick={() => nav('/mixer')}>去调音台创建</button>
+              <p>No presets created</p>
+              <button className="btn" onClick={() => nav('/mixer')}>Create a new preset</button>
             </div>
           ) : (
             presets.map((p) => (
@@ -82,7 +85,7 @@ export default function Library() {
                   </div>
                 </div>
                 <div className="heart" onClick={() => {
-                  if (confirm('确认删除该方案？删除后无法恢复')) deletePreset(p.id)
+                  if (confirm('Are you sure you want to delete this preset? This action cannot be undone.')) deletePreset(p.id)
                 }}>×</div>
               </div>
             ))
@@ -95,18 +98,21 @@ export default function Library() {
           {favorites.length === 0 ? (
             <div className="empty">
               <div className="icon" />
-              <p>还没有收藏的歌曲</p>
-              <button className="btn" onClick={() => setTab('official')}>去发现</button>
+              <p>No favorites yet</p>
+              <button className="btn" onClick={() => setTab('official')}>Discover</button>
             </div>
           ) : (
             officialMusic.filter((m) => favorites.includes(m.id)).map((m) => (
-              <div className="row" key={m.id}>
-                <div className="thumb">♪</div>
+              <div className="row" key={m.id} onClick={() => nav(`/player/${m.id}`)} style={{ cursor: 'pointer' }}>
+                <div className="thumb"><img src={m.cover} alt="" /></div>
                 <div className="info">
                   <div className="name">{m.name}</div>
                   <div className="meta">{m.tag} · {m.duration}</div>
                 </div>
-                <div className="heart active" onClick={() => toggleFavorite(m.id)}>♥</div>
+                <div className="heart active" onClick={(e) => {
+                  e.stopPropagation()
+                  toggleFavorite(m.id)
+                }}>♥</div>
               </div>
             ))
           )}

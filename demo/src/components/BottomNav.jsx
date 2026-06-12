@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
+import { House, ListMusic, Music, Component, User } from 'lucide-react'
 
 const tabs = [
-  { to: '/home', label: 'Home', cn: '首页' },
-  { to: '/library', label: 'Library', cn: '曲库' },
-  { to: '/mixer', label: 'Mixer', cn: '调音' },
-  { to: '/gallery', label: 'Gallery', cn: '画廊' },
-  { to: '/profile', label: 'Profile', cn: '我的' }
+  { to: '/home', label: 'Home', Icon: House },
+  { to: '/library', label: 'Library', Icon: ListMusic },
+  { to: '/mixer', label: 'Mixer', Icon: Music },
+  { to: '/gallery', label: 'Gallery', Icon: Component },
+  { to: '/profile', label: 'Profile', Icon: User }
 ]
 
 export default function BottomNav() {
@@ -17,7 +18,7 @@ export default function BottomNav() {
           to={t.to}
           className={({ isActive }) => 'tab' + (isActive ? ' active' : '')}
         >
-          <span className="dot" />
+          <t.Icon size={20} strokeWidth={1} />
           <span>{t.label}</span>
         </NavLink>
       ))}

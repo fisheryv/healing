@@ -44,12 +44,12 @@ export default function Mixer() {
     savePreset(buildMix())
     setShowSave(false)
     setPresetName('')
-    flashToast('已保存到「我创建的」 ✓')
+    flashToast('Preset saved ✓')
   }
 
   const handleStart = () => {
     if (!main) {
-      flashToast('请先选择主音乐')
+      flashToast('Please select a main music.')
       return
     }
     setCurrentMix(buildMix())
@@ -59,7 +59,7 @@ export default function Mixer() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100% - 0px)' }}>
       <div className="page-pad" style={{ paddingBottom: 0 }}>
-        <h1 className="page-title cn">调音台</h1>
+        <h1 className="page-title cn">Mix Space</h1>
       </div>
 
       <div className="track">
@@ -68,7 +68,7 @@ export default function Mixer() {
           <span className="mute">Mute</span>
         </div>
         <div className="body" onClick={() => setShowMain(true)}>
-          {main ? main.name : <span className="placeholder">点击选择主音乐</span>}
+          {main ? main.name : <span className="placeholder">Select a main music.</span>}
         </div>
         {main && <div className="desc">{main.tag} · {main.duration}</div>}
         {main && (
@@ -88,11 +88,11 @@ export default function Mixer() {
         <div className="body" onClick={() => setShowNoise(true)}>
           {bgNoise || atmos.length > 0 ? (
             <>
-              {bgNoise?.name || '未选背景'}
+              {bgNoise?.name || 'No background noise'}
               {atmos.length > 0 ? ' · ' + atmos.map((a) => a.name).join(' · ') : ''}
             </>
           ) : (
-            <span className="placeholder">点击选择白噪音 / 氛围音</span>
+            <span className="placeholder">Select noise / ambient.</span>
           )}
         </div>
         {bgNoise && (
@@ -110,7 +110,7 @@ export default function Mixer() {
           <span className="mute">Mute</span>
         </div>
         <div className="body" onClick={() => setShowBinaural(true)}>
-          {binaural ? `${binaural.name} 波` : <span className="placeholder">点击选择频段</span>}
+          {binaural ? `${binaural.name} Wave` : <span className="placeholder">Select a binaural beat.</span>}
         </div>
         {binaural && <div className="desc">{binaural.range} — Headphones recommended</div>}
         {binaural && (
@@ -205,19 +205,19 @@ export default function Mixer() {
       {showSave && (
         <div className="modal-mask" onClick={() => setShowSave(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>保存方案</h4>
-            <p>给这套混音起一个名字吧</p>
+            <h4>Save Mix Preset</h4>
+            <p>Give your preset a name.</p>
             <input
               className="field"
               style={{ width: '100%', height: 42, border: 'none', borderBottom: '1px solid var(--line-strong)', fontSize: 16, marginBottom: 18 }}
               maxLength={20}
-              placeholder="如：午后阅读"
+              placeholder="e.g. Afternoon Reading"
               value={presetName}
               onChange={(e) => setPresetName(e.target.value)}
             />
             <div className="modal-actions">
-              <button className="btn ghost" onClick={() => setShowSave(false)}>取消</button>
-              <button className="btn" onClick={handleSave}>保存</button>
+              <button className="btn ghost" onClick={() => setShowSave(false)}>Cancel</button>
+              <button className="btn" onClick={handleSave}>Save</button>
             </div>
           </div>
         </div>

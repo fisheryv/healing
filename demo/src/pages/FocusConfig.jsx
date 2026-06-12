@@ -48,10 +48,10 @@ export default function FocusConfig() {
 
       <div className="mix-summary" onClick={() => setShowPicker(true)}>
         <div className="left">
-          <div className="name">{activeMix ? activeMix.name : '选择一个音乐方案'}</div>
+          <div className="name">{activeMix ? activeMix.name : 'Choose a music preset'}</div>
           <div className="desc">
             {activeMix
-              ? [activeMix.mainMusicTitle, activeMix.bgNoise?.name, activeMix.binaural?.name + ' 波']
+              ? [activeMix.mainMusicTitle, activeMix.bgNoise?.name, activeMix.binaural?.name + ' Wave']
                   .filter(Boolean)
                   .join(' · ')
               : 'Tap to choose'}
@@ -69,7 +69,7 @@ export default function FocusConfig() {
           Begin Focus
         </button>
         <div style={{ textAlign: 'center', marginTop: 14 }}>
-          <span className="text-link" onClick={() => nav(-1)}>取消</span>
+          <span className="text-link" onClick={() => nav(-1)}>Cancel</span>
         </div>
       </div>
 
@@ -79,8 +79,8 @@ export default function FocusConfig() {
             <h4>Select Mix</h4>
             {presets.length === 0 ? (
               <div className="empty">
-                <p>还没有音乐方案，先去调音台创建一个吧</p>
-                <button className="btn" onClick={() => { setShowPicker(false); nav('/mixer') }}>去调音台</button>
+                <p>No presets available, please create one in the mix space</p>
+                <button className="btn" onClick={() => { setShowPicker(false); nav('/mixer') }}>Mix Space</button>
               </div>
             ) : (
               presets.map((p) => (
@@ -88,14 +88,14 @@ export default function FocusConfig() {
                   <div className="left">
                     <div>{p.name}</div>
                     <div className="desc">
-                      {[p.mainMusicTitle, p.bgNoise?.name, p.binaural?.name + ' 波'].filter(Boolean).join(' · ')}
+                      {[p.mainMusicTitle, p.bgNoise?.name, p.binaural?.name + ' Wave'].filter(Boolean).join(' · ')}
                     </div>
                   </div>
                 </div>
               ))
             )}
             <div className="opt" onClick={() => { setShowPicker(false); nav('/mixer') }}>
-              <div className="left"><div>去调音台调整 →</div></div>
+              <div className="left"><div>Mix Space →</div></div>
             </div>
           </div>
         </div>

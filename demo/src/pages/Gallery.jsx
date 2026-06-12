@@ -14,19 +14,19 @@ export default function Gallery() {
   return (
     <div>
       <div className="page-pad" style={{ paddingBottom: 0 }}>
-        <h1 className="page-title cn">画廊</h1>
+        <h1 className="page-title cn">Gallery</h1>
       </div>
 
       <div className="tab-bar">
         <div className={'tab-item' + (filter === 'all' ? ' active' : '')} onClick={() => setFilter('all')}>All</div>
         <div className={'tab-item' + (filter === 'complete' ? ' active' : '')} onClick={() => setFilter('complete')}>Complete</div>
-        <div className={'tab-item' + (filter === 'partial' ? ' active' : '')} onClick={() => setFilter('partial')}>残卷</div>
+        <div className={'tab-item' + (filter === 'partial' ? ' active' : '')} onClick={() => setFilter('partial')}>Incomplete</div>
       </div>
 
       {filtered.length === 0 ? (
         <div className="empty">
           <div className="icon" />
-          <p>完成一次专注，解锁你的第一幅画作</p>
+          <p>Begin your first focus<br/>Generate your first artwork</p>
         </div>
       ) : (
         <div className="gallery-grid">
@@ -36,7 +36,7 @@ export default function Gallery() {
               className={'gallery-item' + (a.status !== 'complete' ? ' partial' : '')}
             >
               <ArtworkPreview seed={a.id} curve={a.curveType} />
-              {a.status !== 'complete' && <div className="partial-tag">残卷</div>}
+              {a.status !== 'complete' && <div className="partial-tag">Incomplete</div>}
               <div className="footer">
                 {new Date(a.createdAt).toISOString().slice(0, 10).replace(/-/g, '.')} · {a.duration} min
               </div>

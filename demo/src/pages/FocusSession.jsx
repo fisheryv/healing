@@ -172,7 +172,7 @@ export default function FocusSession() {
       duration,
       curveType: curveRef.current,
       mixName: mix?.name || 'Untitled',
-      reason: '主动放弃'
+      reason: 'Abandoned by user'
     })
     nav('/gallery', { replace: true })
   }
@@ -212,11 +212,10 @@ export default function FocusSession() {
       {showAbandonModal && (
         <div className="modal-mask">
           <div className="modal">
-            <h4>确认放弃此次专注？</h4>
-            <p>已绘制的图案将以「残卷」的形式保存到画廊。</p>
+            <h4>Are you sure to abandon this focus session?</h4>
             <div className="modal-actions">
-              <button className="btn ghost" onClick={() => setShowAbandonModal(false)}>继续专注</button>
-              <button className="btn" onClick={handleConfirmAbandon}>放弃</button>
+              <button className="btn ghost" onClick={() => setShowAbandonModal(false)}>Continue</button>
+              <button className="btn" onClick={handleConfirmAbandon}>Abandon</button>
             </div>
           </div>
         </div>

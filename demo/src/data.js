@@ -1,39 +1,39 @@
 export const recommendations = [
-  { id: 'r1', name: 'Drifting Pages', tag: 'Lo-fi · Focus' },
-  { id: 'r2', name: 'Quiet Atelier', tag: 'Classical · Reading' },
-  { id: 'r3', name: 'Forest Window', tag: 'Ambient · Calm' },
-  { id: 'r4', name: 'Evening Tide', tag: 'Piano · Sleep' },
-  { id: 'r5', name: 'Paper Lantern', tag: 'Lo-fi · Study' }
+  { id: 'r1', name: 'Drifting Pages', tag: 'Lo-fi · Focus', cover: 'assets/cover00.png' },
+  { id: 'r2', name: 'Quiet Atelier', tag: 'Classical · Reading', cover: 'assets/cover01.png' },
+  { id: 'r3', name: 'Forest Window', tag: 'Ambient · Calm', cover: 'assets/cover02.png' },
+  { id: 'r4', name: 'Evening Tide', tag: 'Piano · Sleep', cover: 'assets/cover03.png' },
+  { id: 'r5', name: 'Paper Lantern', tag: 'Lo-fi · Study', cover: 'assets/cover04.png' }
 ]
 
 export const officialMusic = [
-  { id: 'm1', name: 'Drifting Pages', tag: 'Lo-fi', duration: '03:24' },
-  { id: 'm2', name: 'Quiet Atelier', tag: 'Classical', duration: '04:12' },
-  { id: 'm3', name: 'Forest Window', tag: 'Ambient', duration: '05:48' },
-  { id: 'm4', name: 'Evening Tide', tag: 'Piano', duration: '03:56' },
-  { id: 'm5', name: 'Paper Lantern', tag: 'Lo-fi', duration: '04:33' },
-  { id: 'm6', name: 'Linen Sky', tag: 'Ambient', duration: '06:02' },
-  { id: 'm7', name: 'Ink & Rain', tag: 'Lo-fi', duration: '03:18' }
+  { id: 'm1', name: 'Drifting Pages', tag: 'Lo-fi', duration: '03:24', cover: 'assets/album01.png' },
+  { id: 'm2', name: 'Quiet Atelier', tag: 'Classical', duration: '04:12', cover: 'assets/album02.png' },
+  { id: 'm3', name: 'Forest Window', tag: 'Ambient', duration: '05:48', cover: 'assets/album03.png' },
+  { id: 'm4', name: 'Evening Tide', tag: 'Piano', duration: '03:56', cover: 'assets/album04.png' },
+  { id: 'm5', name: 'Paper Lantern', tag: 'Lo-fi', duration: '04:33', cover: 'assets/album05.png' },
+  { id: 'm6', name: 'Linen Sky', tag: 'Ambient', duration: '06:02', cover: 'assets/album06.png' },
+  { id: 'm7', name: 'Ink & Rain', tag: 'Lo-fi', duration: '03:18', cover: 'assets/album07.png' }
 ]
 
 export const blogs = [
   {
     id: 'b1',
-    title: '为什么 ADHD 群体更需要"看不见"的专注工具',
-    excerpt: '当倒计时本身成为压力源，我们尝试用一种更柔和的方式陪伴专注……',
-    date: '2026.05.20'
+    title: 'Why the ADHD community needs "invisible" focus tools more than ever',
+    date: '2026.05.20',
+    image: 'assets/blog01.png'
   },
   {
     id: 'b2',
-    title: '双耳节拍背后的脑科学：Alpha 波是什么',
-    excerpt: '左右耳频率略有差异时，大脑会"合成"出一个并不存在的拍频……',
-    date: '2026.05.14'
+    title: 'The neuroscience behind binaural beats: What are Alpha waves?',
+    date: '2026.05.14',
+    image: 'assets/blog02.png'
   },
   {
     id: 'b3',
-    title: '把专注变成一幅画：参数方程与音乐的共鸣',
-    excerpt: '李萨如、玫瑰线、万花尺——五种数学曲线如何回应你正在听的音乐……',
-    date: '2026.05.06'
+    title: 'Turning focus into a painting: The resonance between parametric equations and music',
+    date: '2026.05.06',
+    image: 'assets/blog03.png'
   }
 ]
 

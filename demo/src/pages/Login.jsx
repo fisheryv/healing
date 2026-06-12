@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../store.jsx'
 
 export default function Login() {
-  const [tab, setTab] = useState('phone')
   const [account, setAccount] = useState('')
   const [password, setPassword] = useState('')
   const { setUser } = useApp()
@@ -16,53 +15,44 @@ export default function Login() {
   }
 
   return (
-    <div className="login-wrap">
-      <div className="brand">
-        Healing
-        <span className="cn">希 · 音</span>
+    <div className="login-page">
+      <div className="login-header">
+        <img className="login-header-img" src="assets/signin.png" alt="" />
+        <h1 className="login-header-title">Login</h1>
       </div>
 
-      <div className="tabs">
-        <div className={'tab-item' + (tab === 'phone' ? ' active' : '')} onClick={() => setTab('phone')}>
-          Phone
+      <div className="login-body">
+        <div className="field">
+          <label>Email</label>
+          <input
+            type="text"
+            value={account}
+            onChange={(e) => setAccount(e.target.value)}
+            placeholder=""
+          />
         </div>
-        <div className={'tab-item' + (tab === 'email' ? ' active' : '')} onClick={() => setTab('email')}>
-          Email
+
+        <div className="field">
+          <label>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+          <div className="field-forgot">
+            <span className="text-link" onClick={() => nav('/forgot')}>Forgot Password?</span>
+          </div>
         </div>
-      </div>
 
-      <div className="field">
-        <label>{tab === 'phone' ? 'Phone Number' : 'Email Address'}</label>
-        <input
-          type="text"
-          value={account}
-          onChange={(e) => setAccount(e.target.value)}
-          placeholder={tab === 'phone' ? '请输入手机号' : 'name@example.com'}
-        />
-      </div>
+        <button className="btn block" onClick={handleLogin} style={{ marginTop: '20px' }}>
+          Login
+        </button>
 
-      <div className="field">
-        <label>Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-        />
-      </div>
-
-      <button className="btn block" onClick={handleLogin}>
-        Sign In
-      </button>
-
-      <div style={{ textAlign: 'center', marginTop: -8 }}>
-        <span className="text-link">忘记密码？</span>
-      </div>
-
-      <div className="third-party">
-        <div className="icon-btn">G</div>
-        <div className="icon-btn"></div>
-        <div className="icon-btn">W</div>
+        <div className="login-footer">
+          <span className="login-footer-text">Don't have an account?</span>
+          <span className="text-link" style={{ fontWeight: 600 }} onClick={() => nav('/register')}> Sign Up</span>
+        </div>
       </div>
     </div>
   )

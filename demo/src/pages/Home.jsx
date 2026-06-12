@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { CirclePlay, Blend } from 'lucide-react'
 import { useApp } from '../store.jsx'
 import { recommendations, blogs, officialMusic } from '../data.js'
 
@@ -10,7 +11,7 @@ export default function Home() {
   return (
     <div>
       <div className="greeting">
-        <div className="welcome">Welcome Back, {user?.nickname || '希音'}</div>
+        <div className="welcome">Welcome Back, {user?.nickname || 'Friend'}</div>
         <div className="feel">
           How are you feeling
           <br />today?
@@ -18,12 +19,15 @@ export default function Home() {
       </div>
 
       <div className="page-pad">
-        <div className="card-hero">
+        <div className="card-hero focus-entry">
           <div className="text">
-            <p>开启今日的专注之旅</p>
-            <button className="btn" onClick={() => nav('/focus/config')}>Begin</button>
+            <p>Begin your focus journey<br/>Right Now</p>
+            <button className="btn focus-start-btn" onClick={() => nav('/focus/config')}>
+              <CirclePlay size={14} strokeWidth={1} color="#111" />
+              Start
+            </button>
           </div>
-          <div className="hero-illust" />
+          <img className="focus-entry-img" src="assets/focus-02.png" alt="" />
         </div>
 
         <div className="section-title">
@@ -33,8 +37,8 @@ export default function Home() {
 
         <div className="h-scroll">
           {recommendations.map((r) => (
-            <div className="tile" key={r.id}>
-              <div className="cover">♪</div>
+            <div className="tile" key={r.id} onClick={() => nav(`/player/${r.id.replace('r', 'm')}`)} style={{ cursor: 'pointer' }}>
+              <div className="cover"><img src={r.cover} alt="" /></div>
               <div className="name">{r.name}</div>
               <div className="tag">{r.tag}</div>
             </div>
@@ -49,8 +53,8 @@ export default function Home() {
             </div>
             <div className="list">
               {favList.map((m) => (
-                <div className="row" key={m.id}>
-                  <div className="thumb">♪</div>
+                <div className="row" key={m.id} onClick={() => nav(`/player/${m.id}`)} style={{ cursor: 'pointer' }}>
+                  <div className="thumb"><img src={m.cover} alt="" /></div>
                   <div className="info">
                     <div className="name">{m.name}</div>
                     <div className="meta">{m.tag} · {m.duration}</div>
@@ -61,17 +65,29 @@ export default function Home() {
           </>
         )}
 
+        <div className="card-hero mix-entry">
+          <img className="mix-entry-img" src="assets/focus-01.png" alt="" />
+          <div className="text mix-entry-text">
+            <p>Mix your own unique<br/>sound</p>
+            <button className="btn focus-start-btn mix-start-btn" onClick={() => nav('/mixer')}>
+              <Blend size={14} strokeWidth={1} color="#111" />
+              Mix Space
+            </button>
+          </div>
+        </div>
+
         <div className="section-title">
           <h3>Blog</h3>
           <span className="more">More ›</span>
         </div>
-
         <div>
           {blogs.map((b) => (
             <div className="blog-row" key={b.id}>
-              <div className="title">{b.title}</div>
-              <div className="excerpt">{b.excerpt}</div>
-              <div className="date">{b.date}</div>
+              <div className="blog-body">
+                <div className="title">{b.title}</div>
+                <div className="date">{b.date}</div>
+              </div>
+              <img className="blog-thumb" src={b.image} alt="" />
             </div>
           ))}
         </div>
