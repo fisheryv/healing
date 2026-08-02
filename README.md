@@ -139,4 +139,4 @@ npm run dev
 
 - [产品需求文档](docs/希音_Healing_App-产品需求文档.md)
 - [原始需求](docs/希音_Healing_App-原始需求.md)
-- [Demo 说明](src/README.md)
+- [代码说明](src/README.md)
