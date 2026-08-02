@@ -1,4 +1,4 @@
-# 希音 Healing · Demo
+# 希音 Healing
 
 基于 [`docs/希音_Healing_App-产品需求文档.md`](../docs/希音_Healing_App-产品需求文档.md) 生成的可交互 H5 产品 Demo。
 
