@@ -32,7 +32,7 @@ export default function Home() {
 
         <div className="section-title">
           <h3>Recommended</h3>
-          <span className="more">More ›</span>
+          <span className="more" onClick={() => nav('/library')} style={{ cursor: 'pointer' }}>More ›</span>
         </div>
 
         <div className="h-scroll">

@@ -1,34 +1,156 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useApp } from '../store.jsx'
 import { useNavigate } from 'react-router-dom'
 
-const CELLS = 26 * 7
+// 52 周 × 7 天
+const WEEKS = 52
+const DAYS = 7
+const TOTAL_CELLS = WEEKS * DAYS
 
-function buildHeatmap(records) {
-  const arr = new Array(CELLS).fill(0)
-  records.forEach((r, i) => {
-    arr[i % CELLS] = (arr[i % CELLS] + 1) % 5
-  })
-  return arr
+// 绿色系配色（PRD）
+const LEVELS = ['#ebedf0', '#033a16', '#196c2e', '#2ea043', '#56d364']
+
+function getLevel(count) {
+  if (count === 0) return 0
+  if (count === 1) return 1
+  if (count === 2) return 2
+  if (count === 3) return 3
+  return 4
 }
 
-const LEVELS = ['var(--bg-soft)', '#dadada', '#a8a8a8', '#6a6a6a', '#111111']
+/**
+ * 构建热力图数据：52周 × 7天，从今天往前推 364 天
+ * 返回 { cells: [{date, count, level, weekIdx, dayIdx}], monthLabels: [{weekIdx, label}] }
+ */
+function buildHeatmap(records) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // 统计每个日期的专注次数
+  const dateCount = {}
+  records.forEach((r) => {
+    const d = new Date(r.createdAt)
+    d.setHours(0, 0, 0, 0)
+    const key = d.toISOString().slice(0, 10)
+    dateCount[key] = (dateCount[key] || 0) + 1
+  })
+
+  // 计算 52 周前的起始日（对齐到周日）
+  const start = new Date(today)
+  start.setDate(start.getDate() - (TOTAL_CELLS - 1))
+  // 对齐到周日
+  start.setDate(start.getDate() - start.getDay())
+
+  const cells = []
+  const monthLabels = []
+  let lastMonth = -1
+
+  for (let w = 0; w < WEEKS; w++) {
+    for (let d = 0; d < DAYS; d++) {
+      const date = new Date(start)
+      date.setDate(start.getDate() + w * 7 + d)
+      const key = date.toISOString().slice(0, 10)
+      const count = dateCount[key] || 0
+      cells.push({
+        date: key,
+        count,
+        level: getLevel(count),
+        weekIdx: w,
+        dayIdx: d,
+        displayDate: date
+      })
+    }
+    // 月份标注：取每周第一天的月份
+    const weekDate = new Date(start)
+    weekDate.setDate(start.getDate() + w * 7)
+    const month = weekDate.getMonth()
+    if (month !== lastMonth) {
+      monthLabels.push({ weekIdx: w, label: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month] })
+      lastMonth = month
+    }
+  }
+
+  return { cells, monthLabels }
+}
+
+/**
+ * 计算最长连续专注天数和当前连续天数（Streak）
+ */
+function calcStreaks(records) {
+  const dates = new Set()
+  records.forEach((r) => {
+    const d = new Date(r.createdAt)
+    d.setHours(0, 0, 0, 0)
+    dates.add(d.toISOString().slice(0, 10))
+  })
+
+  const sortedDates = Array.from(dates).sort()
+
+  // 最长连续天数
+  let longest = 0
+  let current = 1
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prev = new Date(sortedDates[i - 1])
+    const cur = new Date(sortedDates[i])
+    const diff = (cur - prev) / (1000 * 60 * 60 * 24)
+    if (diff === 1) {
+      current++
+    } else {
+      longest = Math.max(longest, current)
+      current = 1
+    }
+  }
+  longest = Math.max(longest, current, sortedDates.length > 0 ? 1 : 0)
+
+  // 当前连续天数（从今天往前数）
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  let streak = 0
+  const cursor = new Date(today)
+  while (dates.has(cursor.toISOString().slice(0, 10))) {
+    streak++
+    cursor.setDate(cursor.getDate() - 1)
+  }
+
+  return { longest, streak }
+}
 
 export default function Profile() {
   const { user, setUser, artworks, settings, setSettings } = useApp()
   const nav = useNavigate()
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
-  const avatarInput = useRef(null)
+  const avatarInputRef = useRef(null)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [hoveredCell, setHoveredCell] = useState(null)
 
   const totalSec = artworks.filter((a) => a.status === 'complete').reduce((s, a) => s + a.duration * 60, 0)
   const totalComplete = artworks.filter((a) => a.status === 'complete').length
-  const cells = buildHeatmap(artworks)
+  const { cells, monthLabels } = useMemo(() => buildHeatmap(artworks), [artworks])
+  const { longest, streak } = useMemo(() => calcStreaks(artworks), [artworks])
 
-  const toggle = (key) => setSettings({ ...settings, [key]: !settings[key] })
+  const toggle = (key) => {
+    const newVal = !settings[key]
+    setSettings({ ...settings, [key]: newVal })
+    // 勿扰设置：请求/释放通知权限
+    if (key === 'dnd' && 'Notification' in window) {
+      if (newVal) {
+        // 勿扰模式开启时不做特别操作（Web 无法屏蔽系统通知）
+      }
+    }
+    // 完成通知：申请权限
+    if (key === 'completeNotice' && newVal && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }
 
   const logout = () => {
+    setShowLogoutConfirm(true)
+  }
+
+  const confirmLogout = () => {
     setUser(null)
+    setShowLogoutConfirm(false)
     nav('/login', { replace: true })
   }
 
@@ -59,9 +181,9 @@ export default function Profile() {
   return (
     <div>
       <div className="profile-head">
-        <div className="avatar avatar-img" onClick={() => avatarInput.current?.click()}>
+        <div className="avatar avatar-img" onClick={() => avatarInputRef.current?.click()}>
           <img src={avatarSrc} alt="" />
-          <input ref={avatarInput} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+          <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
         </div>
         <div className="info">
           {editingName ? (
@@ -86,20 +208,58 @@ export default function Profile() {
       <div className="heatmap">
         <div className="section-title" style={{ margin: 0 }}>
           <h3>Activity</h3>
-          <span className="more">52 weeks</span>
+          <span className="more">{streak} day streak</span>
         </div>
-        <div className="heatmap-grid">
-          {cells.map((v, i) => (
-            <div key={i} className="heatmap-cell" style={{ background: LEVELS[v] }} />
-          ))}
+        <div className="heatmap-container">
+          {/* 月份标注 */}
+          <div className="heatmap-months">
+            {monthLabels.map((m, i) => (
+              <div key={i} className="heatmap-month-label" style={{ gridColumn: m.weekIdx + 1 }}>
+                {m.label}
+              </div>
+            ))}
+          </div>
+          <div className="heatmap-body">
+            {/* 星期缩写 */}
+            <div className="heatmap-weekdays">
+              <div className="heatmap-weekday"></div>
+              <div className="heatmap-weekday">Mon</div>
+              <div className="heatmap-weekday"></div>
+              <div className="heatmap-weekday">Wed</div>
+              <div className="heatmap-weekday"></div>
+              <div className="heatmap-weekday">Fri</div>
+              <div className="heatmap-weekday"></div>
+            </div>
+            {/* 热力图网格 */}
+            <div className="heatmap-grid">
+              {cells.map((c, i) => (
+                <div
+                  key={i}
+                  className="heatmap-cell interactive"
+                  style={{ background: LEVELS[c.level] }}
+                  onClick={() => setHoveredCell(c)}
+                  title={`${c.date}: ${c.count} session${c.count !== 1 ? 's' : ''}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
+        {/* 点击气泡 */}
+        {hoveredCell && (
+          <div className="heatmap-bubble" onClick={() => setHoveredCell(null)}>
+            <div className="bubble-content">
+              <div className="bubble-date">{hoveredCell.displayDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
+              <div className="bubble-count">{hoveredCell.count} session{hoveredCell.count !== 1 ? 's' : ''}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="stats">
         <Stat num={formatDuration(totalSec)} label="Total Focus" />
         <Stat num={totalComplete} label="Sessions" />
-        <Stat num={0} label="Streak" />
-        <Stat num={artworks.length} label="Artworks" />
+        <Stat num={streak} label="Streak" />
+        <Stat num={longest} label="Longest Streak" />
       </div>
 
       <div className="settings-group">Focus</div>
@@ -118,21 +278,49 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="settings-group">Account</div>
+      <div className="settings-group">Account & Security</div>
       <div className="settings-list">
-        <div className="settings-row"><span>Change Password</span><span className="arrow">›</span></div>
+        <div className="settings-row" onClick={() => nav('/settings/password')} style={{ cursor: 'pointer' }}>
+          <span>Change Password</span><span className="arrow">›</span>
+        </div>
+        <div className="settings-row" onClick={() => nav('/settings/binding')} style={{ cursor: 'pointer' }}>
+          <span>Linked Accounts</span><span className="arrow">›</span>
+        </div>
+        <div className="settings-row" onClick={() => nav('/settings/deactivate')} style={{ cursor: 'pointer' }}>
+          <span style={{ color: '#9a4a4a' }}>Deactivate Account</span><span className="arrow">›</span>
+        </div>
       </div>
 
       <div className="settings-group">About</div>
       <div className="settings-list">
         <div className="settings-row"><span>Current Version</span><span className="arrow">v0.1.0</span></div>
-        <div className="settings-row"><span>Terms of Service</span><span className="arrow">›</span></div>
-        <div className="settings-row"><span>Privacy Policy</span><span className="arrow">›</span></div>
-        <div className="settings-row"><span>Feedback</span><span className="arrow">›</span></div>
-        <div className="settings-row" onClick={logout} style={{ color: '#9a4a4a', justifyContent: 'center' }}>
+        <div className="settings-row" onClick={() => nav('/about/terms')} style={{ cursor: 'pointer' }}>
+          <span>Terms of Service</span><span className="arrow">›</span>
+        </div>
+        <div className="settings-row" onClick={() => nav('/about/privacy')} style={{ cursor: 'pointer' }}>
+          <span>Privacy Policy</span><span className="arrow">›</span>
+        </div>
+        <div className="settings-row" onClick={() => nav('/about/feedback')} style={{ cursor: 'pointer' }}>
+          <span>Feedback</span><span className="arrow">›</span>
+        </div>
+        <div className="settings-row" onClick={logout} style={{ color: '#9a4a4a', justifyContent: 'center', cursor: 'pointer' }}>
           <span>Logout</span>
         </div>
       </div>
+
+      {/* 退出登录确认弹框 */}
+      {showLogoutConfirm && (
+        <div className="modal-mask" onClick={() => setShowLogoutConfirm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h4>Logout</h4>
+            <p>Are you sure you want to log out? Your focus data will be kept on this device.</p>
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
+              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={confirmLogout}>Logout</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

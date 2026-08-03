@@ -13,9 +13,11 @@ import Profile from './pages/Profile.jsx'
 import FocusConfig from './pages/FocusConfig.jsx'
 import FocusSession from './pages/FocusSession.jsx'
 import Player from './pages/Player.jsx'
+import ArtworkDetail from './pages/ArtworkDetail.jsx'
+import SettingsPage, { AboutPage } from './pages/SettingsPage.jsx'
 
 const TABS = ['/home', '/library', '/mixer', '/gallery', '/profile']
-const FULLSCREEN = ['/onboarding', '/login', '/register', '/forgot', '/focus/config', '/focus/session', '/player']
+const FULLSCREEN = ['/onboarding', '/login', '/register', '/forgot', '/focus/config', '/focus/session', '/player', '/artwork', '/settings', '/about']
 
 function Shell() {
   const location = useLocation()
@@ -41,6 +43,10 @@ function Shell() {
             <Route path="/focus/config" element={<FocusConfig />} />
             <Route path="/focus/session" element={<FocusSession />} />
             <Route path="/player/:id" element={<Player />} />
+            <Route path="/artwork/:id" element={<ArtworkDetail />} />
+            <Route path="/settings/:type" element={<SettingsPage />} />
+            <Route path="/about/:type" element={<AboutPage />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </div>

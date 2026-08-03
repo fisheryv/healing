@@ -2,20 +2,22 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Play, Pause, SkipBack, SkipForward, ListMusic, VolumeX, Heart, Blend, Target, Repeat, ChevronLeft } from 'lucide-react'
 import { officialMusic } from '../data.js'
+import { useApp } from '../store.jsx'
 
 export default function Player() {
   const { id } = useParams()
   const nav = useNavigate()
   const audioRef = useRef(null)
+  const { favorites, toggleFavorite, setCurrentMix } = useApp()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(80)
   const [showVolume, setShowVolume] = useState(false)
-  const [isFavorite, setIsFavorite] = useState(false)
   
   const currentIndex = officialMusic.findIndex(m => m.id === id)
   const song = officialMusic[currentIndex >= 0 ? currentIndex : 0]
+  const isFavorite = favorites.includes(song.id)
 
   useEffect(() => {
     if (audioRef.current) {
@@ -78,7 +80,7 @@ export default function Player() {
         <button className="back-btn" onClick={() => nav(-1)}><ChevronLeft size={24} strokeWidth={1.5} /></button>
         <button 
           className={`fav-btn ${isFavorite ? 'active' : ''}`}
-          onClick={() => setIsFavorite(!isFavorite)}
+          onClick={() => toggleFavorite(song.id)}
         >
           <Heart size={20} strokeWidth={1.5} fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
@@ -95,7 +97,21 @@ export default function Player() {
       </div>
 
       <div className="player-actions">
-        <button className="action-btn-outline" onClick={() => nav('/mixer')}>
+        <button className="action-btn-outline" onClick={() => {
+          // 预置该歌曲为主音乐，跳转调音台
+          setCurrentMix({
+            name: song.name,
+            mainMusicId: song.id,
+            mainMusicTitle: song.name,
+            mainVolume: 0.7,
+            bgNoise: null,
+            bgVolume: 0.5,
+            ambient: [],
+            binaural: null,
+            binauralVolume: 0
+          })
+          nav('/mixer')
+        }}>
           <Blend size={16} strokeWidth={1.5} />
           Mix Space
         </button>
@@ -163,7 +179,7 @@ export default function Player() {
 
       <audio
         ref={audioRef}
-        src={`assets/audio/${song.id}.mp3`}
+        src={`sound/music/${song.id}.mp3`}
         onTimeUpdate={() => {
           if (audioRef.current) setCurrentTime(audioRef.current.currentTime)
         }}
