@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useApp } from '../store.jsx'
 
 export default function Onboarding() {
   const nav = useNavigate()
+  const { markOnboardingSeen } = useApp()
   const [current, setCurrent] = useState(0)
   const touchStartX = useRef(0)
   const touchDelta = useRef(0)
@@ -32,6 +34,7 @@ export default function Onboarding() {
   }
 
   const handleStart = () => {
+    markOnboardingSeen()
     nav('/login', { replace: true })
   }
 

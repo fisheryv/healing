@@ -23,14 +23,14 @@ function Shell() {
   const location = useLocation()
   const showTabs = TABS.includes(location.pathname)
   const isFullscreen = FULLSCREEN.includes(location.pathname)
-  const { user } = useApp()
+  const { user, onboardingSeen } = useApp()
 
   return (
     <div className="app-shell">
       <div className="phone">
         <div className={'screen' + (showTabs ? '' : ' no-tabs')} style={isFullscreen ? { padding: 0 } : undefined}>
           <Routes>
-            <Route path="/" element={<Navigate to={user ? '/home' : '/onboarding'} replace />} />
+            <Route path="/" element={<Navigate to={onboardingSeen ? (user ? '/home' : '/login') : '/onboarding'} replace />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<SignUp />} />

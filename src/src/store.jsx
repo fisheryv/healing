@@ -59,6 +59,7 @@ export function AppProvider({ children }) {
   const persisted = loadState()
 
   const [user, setUser] = useState(persisted?.user ?? null)
+  const [onboardingSeen, setOnboardingSeen] = useState(persisted?.onboardingSeen ?? false)
   const [favorites, setFavorites] = useState(persisted?.favorites ?? [])
   const [presets, setPresets] = useState(persisted?.presets ?? DEFAULT_PRESETS)
   const [artworks, setArtworks] = useState(persisted?.artworks ?? [])
@@ -71,10 +72,12 @@ export function AppProvider({ children }) {
   // 最近使用的文学摘录索引（用于去重）
   const [recentQuotes, setRecentQuotes] = useState([])
 
+  const markOnboardingSeen = useCallback(() => setOnboardingSeen(true), [])
+
   // 持久化到 localStorage（排除 currentMix 和 recentQuotes 等运行时状态）
   useEffect(() => {
-    saveState({ user, favorites, presets, artworks, settings })
-  }, [user, favorites, presets, artworks, settings])
+    saveState({ user, onboardingSeen, favorites, presets, artworks, settings })
+  }, [user, onboardingSeen, favorites, presets, artworks, settings])
 
   const toggleFavorite = useCallback((id) => {
     setFavorites((prev) =>
@@ -138,6 +141,7 @@ export function AppProvider({ children }) {
   const value = useMemo(
     () => ({
       user, setUser,
+      onboardingSeen, markOnboardingSeen,
       favorites, toggleFavorite,
       presets, savePreset, deletePreset, isPresetNameExist,
       artworks, addArtwork, deleteArtwork,
@@ -145,7 +149,7 @@ export function AppProvider({ children }) {
       settings, setSettings,
       recentQuotes, recordQuote
     }),
-    [user, favorites, presets, artworks, currentMix, settings, toggleFavorite, addArtwork, deleteArtwork, savePreset, deletePreset, isPresetNameExist, recentQuotes, recordQuote]
+    [user, onboardingSeen, markOnboardingSeen, favorites, presets, artworks, currentMix, settings, toggleFavorite, addArtwork, deleteArtwork, savePreset, deletePreset, isPresetNameExist, recentQuotes, recordQuote]
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
