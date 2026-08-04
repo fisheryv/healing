@@ -266,9 +266,9 @@ export default function FocusSession() {
     return (
       <div className="focus-session suminagashi-session">
         <canvas ref={canvasRef} />
-        <button className="focus-abandon" onClick={handleAbandon}>放弃</button>
+        <button className="focus-abandon" onClick={handleAbandon}>Abandon</button>
         {mix?.binaural && (
-          <div className="focus-headphone">建议佩戴耳机</div>
+          <div className="focus-headphone">Best with Headphones</div>
         )}
       </div>
     )

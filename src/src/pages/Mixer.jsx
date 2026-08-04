@@ -457,7 +457,7 @@ export default function Mixer() {
             <p>Your current mix configuration has unsaved changes. What would you like to do?</p>
             <div className="modal-actions" style={{ flexDirection: 'column', gap: 8 }}>
               <button className="btn block" onClick={() => { setShowUnsaved(false); setShowSave(true) }}>Save & Start</button>
-              <button className="btn ghost block" onClick={() => { setShowUnsaved(false); doStart() }}>Start Without Saving</button>
+              <button className="btn ghost block" onClick={() => { setShowUnsaved(false); doStart() }}>Just Start</button>
               <button className="btn ghost block" onClick={() => setShowUnsaved(false)}>Cancel</button>
             </div>
           </div>

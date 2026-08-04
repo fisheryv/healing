@@ -1190,7 +1190,7 @@ a {
   border-radius: 16px;
   padding: 24px;
   width: 100%;
-  max-width: 320px;
+  max-width: 360px;
 }
 
 .modal h4 {
@@ -1214,9 +1214,9 @@ a {
 
 .modal-actions .btn {
   flex: 1;
-  height: 40px;
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  height: 48px;
+  font-size: 14px;
+  letter-spacing: 0.18em;
 }
 
 /* Library tabs */
