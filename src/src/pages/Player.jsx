@@ -14,6 +14,7 @@ export default function Player() {
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(80)
   const [showVolume, setShowVolume] = useState(false)
+  const [showPlaylist, setShowPlaylist] = useState(false)
   
   const currentIndex = officialMusic.findIndex(m => m.id === id)
   const song = officialMusic[currentIndex >= 0 ? currentIndex : 0]
@@ -38,7 +39,6 @@ export default function Player() {
   const handlePrev = () => {
     if (currentIndex > 0) {
       nav(`/player/${officialMusic[currentIndex - 1].id}`)
-      setIsPlaying(false)
       setCurrentTime(0)
     }
   }
@@ -46,7 +46,6 @@ export default function Player() {
   const handleNext = () => {
     if (currentIndex < officialMusic.length - 1) {
       nav(`/player/${officialMusic[currentIndex + 1].id}`)
-      setIsPlaying(false)
       setCurrentTime(0)
     }
   }
@@ -72,6 +71,12 @@ export default function Player() {
 
   const toggleVolume = () => {
     setShowVolume(!showVolume)
+  }
+
+  const handleSelectSong = (songId) => {
+    nav(`/player/${songId}`)
+    setShowPlaylist(false)
+    setCurrentTime(0)
   }
 
   return (
@@ -152,16 +157,16 @@ export default function Player() {
           <SkipForward size={26} strokeWidth={1.5} />
         </button>
         <div className="volume-wrapper">
-          <button className="control-btn" onClick={toggleVolume}>
+          <button className="control-btn" onClick={() => setShowPlaylist(true)}>
             <ListMusic size={22} strokeWidth={1.5} />
           </button>
           {showVolume && (
             <div className="volume-slider-container">
-              <input 
-                type="range" 
-                min={0} 
-                max={100} 
-                value={volume} 
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={volume}
                 onChange={handleVolumeChange}
                 className="volume-slider"
                 orient="vertical"
@@ -184,13 +189,40 @@ export default function Player() {
           if (audioRef.current) setCurrentTime(audioRef.current.currentTime)
         }}
         onLoadedMetadata={() => {
-          if (audioRef.current) setDuration(audioRef.current.duration)
+          if (audioRef.current) {
+            setDuration(audioRef.current.duration)
+            // 切歌后若处于播放状态，立即播放新曲
+            if (isPlaying) {
+              audioRef.current.play().catch(() => {})
+            }
+          }
         }}
         onEnded={handleNext}
         onError={() => {
           setDuration(1800)
         }}
       />
+
+      {showPlaylist && (
+        <div className="sheet-mask" onClick={() => setShowPlaylist(false)}>
+          <div className="sheet playlist-sheet" onClick={(e) => e.stopPropagation()}>
+            <h4>Up Next</h4>
+            {officialMusic.map((m, i) => (
+              <div
+                key={m.id}
+                className={'opt' + (m.id === song.id ? ' playing' : '')}
+                onClick={() => handleSelectSong(m.id)}
+              >
+                <div className="left">
+                  <div>{m.name}</div>
+                  <div className="desc">{m.tag} Music · {m.duration}</div>
+                </div>
+                {m.id === song.id && <span className="now-playing-dot" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

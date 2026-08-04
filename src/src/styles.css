@@ -935,6 +935,20 @@ a {
   color: var(--ink-muted);
   font-family: var(--serif-en);
   letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.headphone-hint .airpod {
+  width: 12px;
+  height: auto;
+  opacity: 0.8;
+}
+
+.headphone-hint .airpod-right {
+  transform: scaleX(-1);
 }
 
 .focus-config .start-area {
@@ -996,6 +1010,73 @@ a {
   background: var(--canvas-bg);
 }
 
+/* 水墨画（suminagashi）专注会话：和纸底色 + 深色文字 */
+.suminagashi-session {
+  background: #efeae0;
+}
+
+.suminagashi-session .focus-abandon {
+  color: rgba(26, 26, 31, 0.5);
+}
+
+.suminagashi-session .focus-headphone {
+  color: rgba(26, 26, 31, 0.4);
+}
+
+.suminagashi-countdown {
+  color: rgba(26, 26, 31, 0.7);
+  background: #efeae0;
+}
+
+/* 水墨画奖励页：和纸底色 + 深色文字 */
+.suminagashi-reward {
+  color: #1a1a1f;
+  background: #ffffff;
+}
+
+.suminagashi-reward .canvas-area {
+  background: #ffffff;
+}
+
+.suminagashi-reward .reward-halo {
+  background: radial-gradient(circle, rgba(26,26,31,0.06) 0%, rgba(26,26,31,0) 70%);
+}
+
+.suminagashi-reward .quote .en {
+  color: #1a1a1f;
+}
+
+.suminagashi-reward .quote .cn {
+  color: #1a1a1f;
+}
+
+.suminagashi-reward .reward-actions {
+  display: flex;
+  gap: 12px;
+  padding: 0 28px 28px;
+  justify-content: center;
+}
+
+.suminagashi-reward .reward-save-btn {
+  flex: 1;
+  max-width: 200px;
+  padding: 14px 20px;
+  font-family: var(--serif-en);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  border-radius: 999px;
+  cursor: pointer;
+  background: #1a1a1f;
+  color: #ffffff;
+  border: 1px solid #1a1a1f;
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.suminagashi-reward .reward-save-btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
 /* Reward */
 .reward {
   position: absolute;
@@ -1015,7 +1096,7 @@ a {
 .reward .canvas-area {
   flex: 1;
   position: relative;
-  background: var(--canvas-bg);
+  /* background: var(--canvas-bg); */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1071,14 +1152,14 @@ a {
   font-size: 18px;
   line-height: 1.5;
   font-style: italic;
-  color: rgba(241, 239, 232, 0.9);
+  /* color: rgba(241, 239, 232, 0.9); */
 }
 
 .reward .quote .cn {
   margin-top: 14px;
   font-family: var(--serif-cn);
   font-size: 13px;
-  color: rgba(241, 239, 232, 0.55);
+  /* color: rgba(241, 239, 232, 0.55); */
   letter-spacing: 0.1em;
 }
 
@@ -2071,6 +2152,25 @@ a {
   color: var(--ink);
 }
 
+/* 播放列表当前播放指示 */
+.sheet .opt.playing {
+  color: var(--ink);
+}
+
+.now-playing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink);
+  flex: none;
+  animation: now-playing-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes now-playing-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
 .sheet .opt.disabled {
   opacity: 0.35;
   pointer-events: none;
@@ -2274,7 +2374,7 @@ a {
 .artwork-detail-canvas {
   flex: 1;
   min-height: 0;
-  background: var(--canvas-bg);
+  /* background: var(--canvas-bg); */
   margin: 12px 22px;
   border-radius: 16px;
   overflow: hidden;

@@ -61,7 +61,11 @@ export default function FocusConfig() {
       </div>
 
       {activeMix?.binaural && (
-        <div className="headphone-hint">☞ Best experienced with headphones</div>
+        <div className="headphone-hint">
+          <img className="airpod airpod-left" src="assets/airpod.png" alt="" />
+          <span>Best with Headphones</span>
+          <img className="airpod airpod-right" src="assets/airpod.png" alt="" />
+        </div>
       )}
 
       <div className="start-area">

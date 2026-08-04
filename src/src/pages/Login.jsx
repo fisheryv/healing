@@ -9,7 +9,7 @@ export default function Login() {
   const nav = useNavigate()
 
   const handleLogin = () => {
-    const nickname = account ? '用户' + account.slice(-4) : '希音'
+    const nickname = account ? '用户' + account.slice(-4) : 'Fisher'
     setUser({ nickname, account })
     nav('/home', { replace: true })
   }
