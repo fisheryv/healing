@@ -23,7 +23,7 @@ export default function SignUp() {
   }
 
   const handleSignUp = () => {
-    const name = nickname.trim() || '希音'
+    const name = nickname.trim() || 'Healing'
     setUser({ nickname: name, account: email })
     nav('/home', { replace: true })
   }

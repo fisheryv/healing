@@ -35,6 +35,15 @@ let analysisRaf = 0
 let stopToken = 0
 
 // ====== 工具 ======
+// 噪音/氛围音的感知响度远高于主音乐，在相同 volume 下会盖过主音乐。
+// 对噪音/氛围音轨统一施加缩放因子，使滑块值与实际响度更匹配。
+const NOISE_SCALE = 0.25
+
+// 判断某 trackId 是否属于噪音/氛围音轨（需要施加缩放）
+function isNoiseTrackId(trackId) {
+  return trackId === 'bgNoise' || trackId === 'atmos_0' || trackId === 'atmos_1'
+}
+
 function ensureCtx() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)()
@@ -194,12 +203,15 @@ async function startFileTrack(id, url, volume, loop = true, myToken = 0) {
   // 加载完成前如果 stopToken 已变（说明已 stopAll/loadMix 重新开始），放弃这次加载
   if (myToken !== 0 && myToken !== stopToken) return { src: null, gain: null }
 
+  // 噪音/氛围音施加缩放
+  const scaled = isNoiseTrackId(id) ? volume * NOISE_SCALE : volume
+
   const src = c.createBufferSource()
   src.buffer = buf
   src.loop = loop
 
   const gain = c.createGain()
-  gain.gain.value = volume
+  gain.gain.value = scaled
   src.connect(gain).connect(masterGain)
   src.start()
   tracks.set(id, { type: 'file', src, gain, buf, url, loop, playing: true })
@@ -233,6 +245,12 @@ export async function loadMix(mix, srcMap) {
   // 先停止所有，并获取本次加载的令牌
   stopAll()
   const myToken = stopToken
+
+  // 恢复 masterGain（stopAll 不再负责重置）；
+  // 上一次会话结束时可能调用了 fadeOut，masterGain 已被压到 0。
+  const now = ctx.currentTime
+  masterGain.gain.cancelScheduledValues(now)
+  masterGain.gain.setValueAtTime(1, now)
 
   if (!mix) return
 
@@ -287,22 +305,24 @@ export async function loadMix(mix, srcMap) {
 }
 
 export function setTrackVolume(trackId, vol) {
+  // 噪音/氛围音施加缩放，降低感知响度
+  const scaled = isNoiseTrackId(trackId) ? vol * NOISE_SCALE : vol
   // 噪音
   const n = noiseNodes.get(trackId)
   if (n) {
-    n.gain.gain.setTargetAtTime(vol, ctx.currentTime, 0.05)
+    n.gain.gain.setTargetAtTime(scaled, ctx.currentTime, 0.05)
     return
   }
   // 双耳
   const b = binauralNodes.get(trackId)
   if (b) {
-    b.gain.gain.setTargetAtTime(vol, ctx.currentTime, 0.05)
+    b.gain.gain.setTargetAtTime(scaled, ctx.currentTime, 0.05)
     return
   }
   // 文件
   const t = tracks.get(trackId)
   if (t) {
-    t.gain.gain.setTargetAtTime(vol, ctx.currentTime, 0.05)
+    t.gain.gain.setTargetAtTime(scaled, ctx.currentTime, 0.05)
     return
   }
 }
@@ -318,12 +338,10 @@ export function stopAll() {
   for (const id of Array.from(binauralNodes.keys())) stopBinaural(id)
   // 停止分析
   stopAnalysis()
-  // 重置 masterGain（取消所有未完成的 ramp，恢复为 1）
-  if (ctx && masterGain) {
-    const now = ctx.currentTime
-    masterGain.gain.cancelScheduledValues(now)
-    masterGain.gain.setValueAtTime(1, now)
-  }
+  // 注意：此处不再强制将 masterGain 重置为 1。
+  // 因为 stopAll 可能在 fadeOut 淡出过程中被调用（例如会话结束/放弃/保存），
+  // 若把 masterGain 设回 1，会让尚未真正停止的异步加载轨道以满音量继续播放，
+  // 导致"focus 结束后仍然在播放音乐"。masterGain 的恢复改由 loadMix 负责。
 }
 
 /**
@@ -460,6 +478,12 @@ export function getAnalysisData() {
  */
 export function resumeContext() {
   ensureCtx()
+  // 恢复 masterGain，避免上次会话 fadeOut 后残留为 0
+  if (masterGain) {
+    const now = ctx.currentTime
+    masterGain.gain.cancelScheduledValues(now)
+    masterGain.gain.setValueAtTime(1, now)
+  }
 }
 
 /**

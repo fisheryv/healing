@@ -47,7 +47,7 @@ function inkColorAt(phase) {
 export default function FocusSession() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { recentQuotes, recordQuote, addArtwork } = useApp()
+  const { recentQuotes, recordQuote, addArtwork, setCurrentMix } = useApp()
 
   // 从 FocusConfig 传入的导航 state
   const { duration = 25, mix = null } = location.state || {}
@@ -57,10 +57,20 @@ export default function FocusSession() {
   const engineRef = useRef(null)
   const rafRef = useRef(null)
   const startTimeRef = useRef(0)
+  // 会话结束后的兜底停止定时器
+  const stopGuardRef = useRef(null)
   const [phase, setPhase] = useState('countdown')
   const [countdown, setCountdown] = useState(3)
   const [quote, setQuote] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
+
+  // 组件卸载时确保停止所有音频（防止离开页面后音效继续播放）
+  useEffect(() => {
+    return () => {
+      stopAll()
+      if (stopGuardRef.current) clearTimeout(stopGuardRef.current)
+    }
+  }, [])
 
   // 倒计时阶段
   useEffect(() => {
@@ -211,9 +221,17 @@ export default function FocusSession() {
     const q = pickQuote(recentQuotes)
     setQuote(q)
     if (q) recordQuote(q.en)
+    // 会话已结束：清掉 store 中的 currentMix，避免下次进入 Mixer 时自动载入本次配置
+    setCurrentMix(null)
+    // 先平滑淡出（2 秒），并设置兜底定时器确保会话结束后不再有音乐残留
     fadeOut(2)
+    if (stopGuardRef.current) clearTimeout(stopGuardRef.current)
+    stopGuardRef.current = setTimeout(() => {
+      stopGuardRef.current = null
+      stopAll()
+    }, 3000)
     setPhase('reward')
-  }, [recentQuotes, recordQuote])
+  }, [recentQuotes, recordQuote, setCurrentMix])
 
   // 放弃会话 → 保存残卷
   const handleAbandon = useCallback(() => {
@@ -224,31 +242,37 @@ export default function FocusSession() {
     const elapsedSec = Math.round((Date.now() - startTimeRef.current) / 1000)
     const elapsedMin = Math.max(1, elapsedSec)
     addArtwork({
-      title: `残卷·中断于 ${elapsedMin}min`,
+      title: `Fragment · Abandoned at ${elapsedMin}min`,
       curveType: 'Suminagashi',
       previewUrl: url,
       status: 'abandoned',
       duration: elapsedMin,
+      mixName: mix?.name || '',
       createdAt: Date.now(),
     })
+    // 放弃会话同样清掉 currentMix，避免下次进入 Mixer 时自动载入本次配置
+    setCurrentMix(null)
     fadeOut(0.8)
     stopAll()
     navigate('/gallery')
-  }, [addArtwork, navigate])
+  }, [addArtwork, navigate, mix, setCurrentMix])
 
   // 保存完成的作品
   const handleSave = useCallback(() => {
     addArtwork({
-      title: `墨流·${new Date().toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}`,
+      title: `Ink Flow · ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
       curveType: 'Suminagashi',
       previewUrl,
       status: 'complete',
       duration,
+      mixName: mix?.name || '',
       createdAt: Date.now(),
     })
+    // 完成保存后清掉 currentMix，避免下次进入 Mixer 时自动载入本次配置
+    setCurrentMix(null)
     stopAll()
     navigate('/gallery')
-  }, [addArtwork, previewUrl, duration])
+  }, [addArtwork, previewUrl, duration, mix, setCurrentMix])
 
   // 倒计时阶段
   if (phase === 'countdown') {
@@ -266,9 +290,9 @@ export default function FocusSession() {
     return (
       <div className="focus-session suminagashi-session">
         <canvas ref={canvasRef} />
-        <button className="focus-abandon" onClick={handleAbandon}>放弃</button>
+        <button className="focus-abandon" onClick={handleAbandon}>ABANDON</button>
         {mix?.binaural && (
-          <div className="focus-headphone">建议佩戴耳机</div>
+          <div className="focus-headphone">Best with Headphones</div>
         )}
       </div>
     )
@@ -289,7 +313,7 @@ export default function FocusSession() {
           </div>
         )}
         <div className="reward-actions">
-          <button className="btn reward-save-btn" onClick={handleSave}>保存</button>
+          <button className="btn reward-save-btn" onClick={handleSave}>Save</button>
         </div>
       </div>
     )

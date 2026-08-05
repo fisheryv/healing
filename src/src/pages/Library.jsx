@@ -6,7 +6,7 @@ import { officialMusic } from '../data.js'
 export default function Library() {
   const [tab, setTab] = useState('official')
   const [search, setSearch] = useState('')
-  const { favorites, toggleFavorite, presets, deletePreset } = useApp()
+  const { favorites, toggleFavorite, presets, deletePreset, setCurrentMix } = useApp()
   const nav = useNavigate()
 
   const filtered = officialMusic.filter(
@@ -74,7 +74,7 @@ export default function Library() {
             </div>
           ) : (
             presets.map((p) => (
-              <div className="row" key={p.id}>
+              <div className="row" key={p.id} onClick={() => { setCurrentMix(p); nav('/focus/config') }} style={{ cursor: 'pointer' }}>
                 <div className="thumb">≋</div>
                 <div className="info">
                   <div className="name">{p.name}</div>
@@ -84,7 +84,8 @@ export default function Library() {
                     {p.binaural ? ' · ' + p.binaural.name : ''}
                   </div>
                 </div>
-                <div className="heart" onClick={() => {
+                <div className="heart" onClick={(e) => {
+                  e.stopPropagation()
                   if (confirm('Are you sure you want to delete this preset? This action cannot be undone.')) deletePreset(p.id)
                 }}>×</div>
               </div>

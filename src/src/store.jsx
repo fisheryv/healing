@@ -32,7 +32,7 @@ const DEFAULT_PRESETS = [
     mainMusicId: 'm1',
     mainMusicTitle: 'Glass Rain',
     mainVolume: 0.7,
-    bgNoise: { id: 'rain', name: '雨声' },
+    bgNoise: { id: 'rain', name: 'Rain' },
     bgVolume: 0.5,
     ambient: [],
     binaural: { id: 'alpha', name: 'Alpha', range: '8–13 Hz' },
@@ -47,7 +47,7 @@ const DEFAULT_PRESETS = [
     mainVolume: 0.6,
     bgNoise: null,
     bgVolume: 0.4,
-    ambient: [{ id: 'pages', name: '翻书声', volume: 0.4 }],
+    ambient: [{ id: 'pages', name: 'Page Turning', volume: 0.4 }],
     binaural: null,
     binauralVolume: 0,
     createdAt: Date.now() - 3 * 86400000

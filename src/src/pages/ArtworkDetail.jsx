@@ -205,7 +205,7 @@ export default function ArtworkDetail() {
       ctx.fillStyle = 'rgba(241, 239, 232, 0.4)'
       ctx.font = '20px serif'
       ctx.textAlign = 'right'
-      ctx.fillText('Healing · 希音', 1050, 1050)
+      ctx.fillText('Healing', 1050, 1050)
 
       if (showShare === 'withQuote' && art.quote) {
         ctx.fillStyle = 'rgba(241, 239, 232, 0.8)'
@@ -318,12 +318,12 @@ export default function ArtworkDetail() {
         </div>
         <div className="info-row">
           <span className="label">Mix</span>
-          <span className="value">{art.mixName}</span>
+          <span className="value">{art.mixName || '—'}</span>
         </div>
         {art.status !== 'complete' && (
           <div className="info-row">
             <span className="label">Status</span>
-            <span className="value" style={{ color: '#9a4a4a' }}>残卷·中断于{art.elapsedMin || 1}min</span>
+            <span className="value" style={{ color: '#9a4a4a' }}>Fragment · Abandoned at {art.elapsedMin || 1}min</span>
           </div>
         )}
       </div>

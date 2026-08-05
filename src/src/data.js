@@ -87,38 +87,38 @@ export const quotes = [
  */
 export const noiseOptions = {
   pure: [
-    { id: 'white', name: '白噪音', desc: '均衡掩蔽，适合普通环境', src: { synth: 'noise', type: 'white' } },
-    { id: 'pink', name: '粉噪音', desc: '柔和均衡，适合长时间聆听', src: { synth: 'noise', type: 'pink' } },
-    { id: 'brown', name: '褐噪音', desc: '低沉如深流，掩蔽效果强', src: { synth: 'noise', type: 'brown' } }
+    { id: 'white', name: 'White Noise', desc: 'Balanced masking, suitable for general environments', src: { synth: 'noise', type: 'white' } },
+    { id: 'pink', name: 'Pink Noise', desc: 'Soft and balanced, suitable for long listening', src: { synth: 'noise', type: 'pink' } },
+    { id: 'brown', name: 'Brown Noise', desc: 'Deep like a heavy current, strong masking effect', src: { synth: 'noise', type: 'brown' } }
   ],
   ambient: [
-    { id: 'rain', name: '雨声', src: 'sound/ambient/light-rain.mp3' },
-    { id: 'heavy-rain', name: '暴雨', src: 'sound/ambient/heavy-rain.mp3' },
-    { id: 'waves', name: '海浪', src: 'sound/ambient/waves.mp3' },
-    { id: 'wind', name: '风声', src: 'sound/ambient/wind.mp3' },
-    { id: 'howling-wind', name: '呼啸风', src: 'sound/ambient/howling-wind.mp3' },
-    { id: 'wind-trees', name: '林间风', src: 'sound/ambient/wind-in-trees.mp3' },
-    { id: 'forest', name: '森林', src: 'sound/ambient/jungle.mp3' },
-    { id: 'stream', name: '溪流', src: 'sound/ambient/river.mp3' },
-    { id: 'waterfall', name: '瀑布', src: 'sound/ambient/waterfall.mp3' },
-    { id: 'fire', name: '篝火', src: 'sound/ambient/campfire.mp3' },
-    { id: 'droplets', name: '水滴', src: 'sound/ambient/droplets.mp3' }
+    { id: 'rain', name: 'Rain', src: 'sound/ambient/light-rain.mp3' },
+    { id: 'heavy-rain', name: 'Heavy Rain', src: 'sound/ambient/heavy-rain.mp3' },
+    { id: 'waves', name: 'Ocean Waves', src: 'sound/ambient/waves.mp3' },
+    { id: 'wind', name: 'Wind', src: 'sound/ambient/wind.mp3' },
+    { id: 'howling-wind', name: 'Howling Wind', src: 'sound/ambient/howling-wind.mp3' },
+    { id: 'wind-trees', name: 'Wind in Trees', src: 'sound/ambient/wind-in-trees.mp3' },
+    { id: 'forest', name: 'Forest', src: 'sound/ambient/jungle.mp3' },
+    { id: 'stream', name: 'Stream', src: 'sound/ambient/river.mp3' },
+    { id: 'waterfall', name: 'Waterfall', src: 'sound/ambient/waterfall.mp3' },
+    { id: 'fire', name: 'Campfire', src: 'sound/ambient/campfire.mp3' },
+    { id: 'droplets', name: 'Droplets', src: 'sound/ambient/droplets.mp3' }
   ]
 }
 
 export const atmosOptions = [
-  { id: 'birds', name: '鸟鸣', src: 'sound/ambient/birds.mp3' },
-  { id: 'pages', name: '翻书声', src: 'sound/ambient/pages.mp3' },
-  { id: 'keys', name: '键盘声', src: 'sound/ambient/keys.mp3' },
-  { id: 'write', name: '写字声', src: 'sound/ambient/write.mp3' },
-  { id: 'cicada', name: '蝉鸣', src: 'sound/ambient/cicida.mp3' },
-  { id: 'crickets', name: '蟋蟀', src: 'sound/ambient/crickets.mp3' },
-  { id: 'steps-snow', name: '踏雪', src: 'sound/ambient/walk-in-snow.mp3' },
-  { id: 'steps-gravel', name: '踏石', src: 'sound/ambient/walk-on-gravel.mp3' },
-  { id: 'steps-leaves', name: '踏叶', src: 'sound/ambient/walk-on-leaves.mp3' },
-  { id: 'chime', name: '风铃', src: 'sound/ambient/chime.mp3' },
-  { id: 'cat', name: '猫咪', src: 'sound/ambient/cat.mp3' },
-  { id: 'coffee', name: '咖啡研磨', src: 'sound/ambient/coffee.mp3' }
+  { id: 'birds', name: 'Birds', src: 'sound/ambient/birds.mp3' },
+  { id: 'pages', name: 'Page Turning', src: 'sound/ambient/pages.mp3' },
+  { id: 'keys', name: 'Keyboard', src: 'sound/ambient/keys.mp3' },
+  { id: 'write', name: 'Writing', src: 'sound/ambient/write.mp3' },
+  { id: 'cicada', name: 'Cicada', src: 'sound/ambient/cicida.mp3' },
+  { id: 'crickets', name: 'Crickets', src: 'sound/ambient/crickets.mp3' },
+  { id: 'steps-snow', name: 'Steps on Snow', src: 'sound/ambient/walk-in-snow.mp3' },
+  { id: 'steps-gravel', name: 'Steps on Gravel', src: 'sound/ambient/walk-on-gravel.mp3' },
+  { id: 'steps-leaves', name: 'Steps on Leaves', src: 'sound/ambient/walk-on-leaves.mp3' },
+  { id: 'chime', name: 'Wind Chime', src: 'sound/ambient/chime.mp3' },
+  { id: 'cat', name: 'Cat', src: 'sound/ambient/cat.mp3' },
+  { id: 'coffee', name: 'Coffee Grinding', src: 'sound/ambient/coffee.mp3' }
 ]
 
 /**
@@ -126,10 +126,10 @@ export const atmosOptions = [
  * 取每类脑波范围的中间值
  */
 export const binauralOptions = [
-  { id: 'delta', name: 'Delta', range: '0.5–4 Hz', desc: '深度慢波，适合深度放松与冥想入定', src: { synth: 'binaural', baseFreq: 150, beatHz: 2 } },
-  { id: 'theta', name: 'Theta', range: '4–8 Hz', desc: '梦境边界，适合冥想与创意发散', src: { synth: 'binaural', baseFreq: 180, beatHz: 6 } },
-  { id: 'alpha', name: 'Alpha', range: '8–13 Hz', desc: '清醒放松，适合轻松专注与阅读学习', src: { synth: 'binaural', baseFreq: 200, beatHz: 10 } },
-  { id: 'beta', name: 'Beta', range: '13–30 Hz', desc: '活跃思维，适合主动思考与高效学习', src: { synth: 'binaural', baseFreq: 250, beatHz: 18 } }
+  { id: 'delta', name: 'Delta', range: '0.5–4 Hz', desc: 'Deep slow waves, suitable for deep relaxation and meditation', src: { synth: 'binaural', baseFreq: 150, beatHz: 2 } },
+  { id: 'theta', name: 'Theta', range: '4–8 Hz', desc: 'Dreamlike boundary, suitable for meditation and creative divergence', src: { synth: 'binaural', baseFreq: 180, beatHz: 6 } },
+  { id: 'alpha', name: 'Alpha', range: '8–13 Hz', desc: 'Awake and relaxed, suitable for light focus and reading', src: { synth: 'binaural', baseFreq: 200, beatHz: 10 } },
+  { id: 'beta', name: 'Beta', range: '13–30 Hz', desc: 'Active thinking, suitable for active thinking and efficient learning', src: { synth: 'binaural', baseFreq: 250, beatHz: 18 } }
 ]
 
 export const curveTypes = [

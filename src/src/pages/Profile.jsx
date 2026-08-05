@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { useApp } from '../store.jsx'
 import { useNavigate } from 'react-router-dom'
 
@@ -6,6 +6,11 @@ import { useNavigate } from 'react-router-dom'
 const WEEKS = 52
 const DAYS = 7
 const TOTAL_CELLS = WEEKS * DAYS
+
+// 热力图单元格固定尺寸（px）
+const CELL_SIZE = 14
+const CELL_GAP = 3
+const WEEK_WIDTH = CELL_SIZE + CELL_GAP
 
 // 绿色系配色（PRD）
 const LEVELS = ['#ebedf0', '#033a16', '#196c2e', '#2ea043', '#56d364']
@@ -129,6 +134,127 @@ export default function Profile() {
   const { cells, monthLabels } = useMemo(() => buildHeatmap(artworks), [artworks])
   const { longest, streak } = useMemo(() => calcStreaks(artworks), [artworks])
 
+  // ── 热力图横向滚动：拖动平移 + 自定义滚动条 ──
+  const scrollRef = useRef(null)          // 滚动容器
+  const thumbRef = useRef(null)           // 滚动条滑块
+  const dragState = useRef({ dragging: false, armed: false, justDragged: false, startX: 0, startScroll: 0, fromThumb: false })
+
+  // 初始化：滚动到最右端，确保当天（最后一列）在首屏可见
+  const initScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollLeft = el.scrollWidth - el.clientWidth
+    // 同步滚动条滑块
+    const maxScroll = el.scrollWidth - el.clientWidth
+    if (maxScroll <= 0) {
+      setThumbWidth(el.clientWidth)
+      setThumbLeft(0)
+      return
+    }
+    const tWidth = Math.max(30, (el.clientWidth / el.scrollWidth) * el.clientWidth)
+    setThumbWidth(tWidth)
+    setThumbLeft(el.clientWidth - tWidth)
+  }, [])
+
+  useEffect(() => {
+    // 等待布局完成
+    const id = requestAnimationFrame(initScroll)
+    return () => cancelAnimationFrame(id)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 拖动平移热力图网格（鼠标 + 触摸）
+  const DRAG_THRESHOLD = 4
+  const applyDrag = (clientX) => {
+    const st = dragState.current
+    if (!st.armed) return
+    const el = scrollRef.current
+    if (!el) return
+    const dx = clientX - st.startX
+    // 超过阈值才真正开始拖动（避免误触吞掉 click）
+    if (!st.dragging && Math.abs(dx) < DRAG_THRESHOLD) return
+    if (!st.dragging) st.dragging = true
+    if (st.fromThumb) {
+      // 拖动滚动条：按比例换算到内容滚动量
+      const thumbW = thumbRef.current?.offsetWidth || 30
+      const track = el.clientWidth - thumbW
+      if (track > 0) {
+        const maxScroll = el.scrollWidth - el.clientWidth
+        const next = st.startScroll + (dx / track) * maxScroll
+        el.scrollLeft = Math.max(0, Math.min(maxScroll, next))
+      }
+    } else {
+      // 拖动网格：反向平移
+      el.scrollLeft = st.startScroll - dx
+    }
+  }
+
+  const endDrag = () => {
+    if (dragState.current.dragging) {
+      dragState.current.justDragged = true
+      // 下一轮事件循环清除标记，允许后续 click
+      setTimeout(() => { dragState.current.justDragged = false }, 0)
+    }
+    dragState.current.armed = false
+    dragState.current.dragging = false
+  }
+
+  const onPointerDown = (e, fromThumb = false) => {
+    const el = scrollRef.current
+    if (!el) return
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX
+    dragState.current = {
+      dragging: false,
+      armed: true,
+      justDragged: false,
+      startX: clientX,
+      startScroll: el.scrollLeft,
+      fromThumb,
+    }
+  }
+
+  // 全局事件：拖动期间监听 window，确保鼠标移出容器仍可继续拖动
+  useEffect(() => {
+    const onMouseMove = (e) => applyDrag(e.clientX)
+    const onTouchMove = (e) => {
+      if (!dragState.current.armed) return
+      if (e.touches.length > 0) applyDrag(e.touches[0].clientX)
+      if (e.cancelable && dragState.current.dragging) e.preventDefault()
+    }
+    const onMouseUp = () => endDrag()
+    const onTouchEnd = () => endDrag()
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchend', onTouchEnd)
+    window.addEventListener('touchcancel', onTouchEnd)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [])
+
+  // 滚动时同步滚动条位置（由 wheel/programmatic 触发）
+  const [thumbLeft, setThumbLeft] = useState(0)
+  const [thumbWidth, setThumbWidth] = useState(0)
+  const onScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const maxScroll = el.scrollWidth - el.clientWidth
+    if (maxScroll <= 0) {
+      setThumbWidth(el.clientWidth)
+      setThumbLeft(0)
+      return
+    }
+    const ratio = el.scrollLeft / maxScroll
+    const trackWidth = el.clientWidth
+    const tWidth = Math.max(30, (el.clientWidth / el.scrollWidth) * trackWidth)
+    setThumbWidth(tWidth)
+    setThumbLeft(ratio * (trackWidth - tWidth))
+  }
+
   const toggle = (key) => {
     const newVal = !settings[key]
     setSettings({ ...settings, [key]: newVal })
@@ -210,39 +336,67 @@ export default function Profile() {
           <h3>Activity</h3>
           <span className="more">{streak} day streak</span>
         </div>
-        <div className="heatmap-container">
-          {/* 月份标注 */}
-          <div className="heatmap-months">
-            {monthLabels.map((m, i) => (
-              <div key={i} className="heatmap-month-label" style={{ gridColumn: m.weekIdx + 1 }}>
-                {m.label}
-              </div>
-            ))}
-          </div>
-          <div className="heatmap-body">
-            {/* 星期缩写 */}
-            <div className="heatmap-weekdays">
-              <div className="heatmap-weekday"></div>
-              <div className="heatmap-weekday">Mon</div>
-              <div className="heatmap-weekday"></div>
-              <div className="heatmap-weekday">Wed</div>
-              <div className="heatmap-weekday"></div>
-              <div className="heatmap-weekday">Fri</div>
-              <div className="heatmap-weekday"></div>
-            </div>
-            {/* 热力图网格 */}
-            <div className="heatmap-grid">
-              {cells.map((c, i) => (
+        <div
+          className="heatmap-scroll"
+          ref={scrollRef}
+          onScroll={onScroll}
+          onMouseDown={(e) => onPointerDown(e, false)}
+          onTouchStart={(e) => onPointerDown(e, false)}
+        >
+          <div
+            className="heatmap-inner"
+            style={{ width: 24 + 4 + WEEKS * CELL_SIZE + (WEEKS - 1) * CELL_GAP }}
+          >
+            {/* 月份标注 */}
+            <div className="heatmap-months">
+              {monthLabels.map((m, i) => (
                 <div
                   key={i}
-                  className="heatmap-cell interactive"
-                  style={{ background: LEVELS[c.level] }}
-                  onClick={() => setHoveredCell(c)}
-                  title={`${c.date}: ${c.count} session${c.count !== 1 ? 's' : ''}`}
-                />
+                  className="heatmap-month-label"
+                  style={{ position: 'absolute', left: m.weekIdx * WEEK_WIDTH }}
+                >
+                  {m.label}
+                </div>
               ))}
             </div>
+            <div className="heatmap-body">
+              {/* 星期缩写 */}
+              <div className="heatmap-weekdays">
+                <div className="heatmap-weekday"></div>
+                <div className="heatmap-weekday">Mon</div>
+                <div className="heatmap-weekday"></div>
+                <div className="heatmap-weekday">Wed</div>
+                <div className="heatmap-weekday"></div>
+                <div className="heatmap-weekday">Fri</div>
+                <div className="heatmap-weekday"></div>
+              </div>
+              {/* 热力图网格 */}
+              <div className="heatmap-grid">
+                {cells.map((c, i) => (
+                  <div
+                    key={i}
+                    className="heatmap-cell interactive"
+                    style={{ background: LEVELS[c.level] }}
+                    onClick={() => {
+                      if (dragState.current.justDragged) return
+                      setHoveredCell(c)
+                    }}
+                    title={`${c.date}: ${c.count} session${c.count !== 1 ? 's' : ''}`}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
+        </div>
+        {/* 可拖动滚动条 */}
+        <div className="heatmap-scrollbar">
+          <div
+            ref={thumbRef}
+            className="heatmap-scrollbar-thumb"
+            style={{ width: thumbWidth || undefined, transform: `translateX(${thumbLeft}px)` }}
+            onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); onPointerDown(e, true) }}
+            onTouchStart={(e) => { e.stopPropagation(); onPointerDown(e, true) }}
+          />
         </div>
         {/* 点击气泡 */}
         {hoveredCell && (

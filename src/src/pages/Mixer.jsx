@@ -32,6 +32,8 @@ export default function Mixer() {
   const [showOverwrite, setShowOverwrite] = useState(false)
   // 未保存配置提示
   const [showUnsaved, setShowUnsaved] = useState(false)
+  // 保存后自动开始（用于 "Save & Start" 流程）
+  const [pendingStart, setPendingStart] = useState(false)
 
   // 标记配置是否有改动（用于判断"未保存"）
   const [dirty, setDirty] = useState(false)
@@ -194,6 +196,10 @@ export default function Mixer() {
     setPresetName('')
     setDirty(false)
     flashToast('Preset saved ✓')
+    if (pendingStart) {
+      setPendingStart(false)
+      doStart()
+    }
   }
 
   const handleStart = () => {
@@ -238,6 +244,25 @@ export default function Mixer() {
   const handleMuteBg = () => setBgMuted((v) => !v)
   const handleMuteBi = () => setBiMuted((v) => !v)
 
+  // 一键清除所有配置（同时清掉 store 中的 currentMix，避免下次进入时残留）
+  const handleClear = () => {
+    audioEngine.stopPreview()
+    audioEngine.stopAll()
+    setCurrentMix(null)
+    setMain(null)
+    setMainVol(70)
+    setMainMuted(false)
+    setBgNoise(null)
+    setBgVol(50)
+    setBgMuted(false)
+    setAtmos([])
+    setBinaural(null)
+    setBiVol(30)
+    setBiMuted(false)
+    setDirty(false)
+    flashToast('Cleared')
+  }
+
   // 主音乐搜索过滤
   const filteredMusic = officialMusic.filter((m) =>
     m.name.toLowerCase().includes(mainSearch.toLowerCase()) ||
@@ -246,8 +271,9 @@ export default function Mixer() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100% - 0px)' }}>
-      <div className="page-pad" style={{ paddingBottom: 0 }}>
+      <div className="page-pad" style={{ paddingBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 className="page-title cn">Mix Space</h1>
+        <span className="text-link" onClick={handleClear} style={{ fontSize: 14, color: 'var(--ink-muted)' }}>Clear</span>
       </div>
 
       <div className="track">
@@ -370,7 +396,7 @@ export default function Mixer() {
                 </div>
               ))}
             </div>
-            <h4 style={{ marginTop: 22 }}>Atmosphere (已选 {atmos.length} / 2)</h4>
+            <h4 style={{ marginTop: 22 }}>Atmosphere ({atmos.length} / 2 selected)</h4>
             <div className="grid-opt">
               {atmosOptions.map((a) => {
                 const isChecked = atmos.find((x) => x.id === a.id)
@@ -401,20 +427,20 @@ export default function Mixer() {
             {binauralOptions.map((b) => (
               <div key={b.id} className={'opt' + (binaural?.id === b.id ? ' checked' : '')} onClick={() => { setBinaural(b); setShowBinaural(false) }}>
                 <div className="left">
-                  <div>{b.name} 波 · {b.range}</div>
+                  <div>{b.name} Wave · {b.range}</div>
                   <div className="desc">{b.desc}</div>
                 </div>
               </div>
             ))}
             <div className="opt" onClick={() => { setBinaural(null); setShowBinaural(false) }}>
-              <div className="left"><div>暂不使用</div></div>
+              <div className="left"><div>None</div></div>
             </div>
           </div>
         </div>
       )}
 
       {showSave && (
-        <div className="modal-mask" onClick={() => setShowSave(false)}>
+        <div className="modal-mask" onClick={() => { setShowSave(false); setPendingStart(false) }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h4>Save Mix Preset</h4>
             <p>Give your preset a name.</p>
@@ -428,7 +454,7 @@ export default function Mixer() {
               autoFocus
             />
             <div className="modal-actions">
-              <button className="btn ghost" onClick={() => setShowSave(false)}>Cancel</button>
+              <button className="btn ghost" onClick={() => { setShowSave(false); setPendingStart(false) }}>Cancel</button>
               <button className="btn" onClick={handleSave}>Save</button>
             </div>
           </div>
@@ -456,7 +482,7 @@ export default function Mixer() {
             <h4>Unsaved Changes</h4>
             <p>Your current mix configuration has unsaved changes. What would you like to do?</p>
             <div className="modal-actions" style={{ flexDirection: 'column', gap: 8 }}>
-              <button className="btn block" onClick={() => { setShowUnsaved(false); setShowSave(true) }}>Save & Start</button>
+              <button className="btn block" onClick={() => { setShowUnsaved(false); setPendingStart(true); setShowSave(true) }}>Save & Start</button>
               <button className="btn ghost block" onClick={() => { setShowUnsaved(false); doStart() }}>Start Without Saving</button>
               <button className="btn ghost block" onClick={() => setShowUnsaved(false)}>Cancel</button>
             </div>

@@ -26,18 +26,61 @@ export default function Player() {
     }
   }, [volume])
 
-  const togglePlay = () => {
-    if (!audioRef.current) return
-    if (isPlaying) {
-      audioRef.current.pause()
-    } else {
-      audioRef.current.play().catch(() => {})
+  // 组件卸载时暂停音频，避免离开页面后原生 <audio> 继续播放
+  // 注意：不要在这里清空 src 或调用 load()——React 18 StrictMode 在开发环境
+  // 会先 mount→unmount→mount 一次，cleanup 中的 src='' 会破坏第二次挂载时的加载。
+  useEffect(() => {
+    return () => {
+      const el = audioRef.current
+      if (el) {
+        try { el.pause() } catch (e) { /* noop */ }
+      }
     }
-    setIsPlaying(!isPlaying)
+  }, [])
+
+  // 切歌时重置进度状态。不调用 el.load()——
+  // 通过给 <audio> 加 key={song.id}，切歌时 React 会自动重建元素，
+  // 浏览器自然加载新 src，不会出现 useEffect 与浏览器加载互相中断的问题。
+  useEffect(() => {
+    setCurrentTime(0)
+    setDuration(0)
+    setIsPlaying(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  // 跳转到调音台/专注前先暂停原生 audio，避免与 audioEngine 重叠播放
+  const pauseNativeAudio = () => {
+    const el = audioRef.current
+    if (el) {
+      try { el.pause() } catch (e) { /* noop */ }
+      setIsPlaying(false)
+    }
+  }
+
+  const togglePlay = () => {
+    const el = audioRef.current
+    if (!el) return
+    if (isPlaying) {
+      el.pause()
+      setIsPlaying(false)
+    } else {
+      // 兜底：若元数据尚未就绪（duration 为 0 或 NaN），强制重新加载
+      // 这能应对 StrictMode 双挂载、cleanup 清 src 等导致 audio 未正常加载的情况
+      if (!el.duration || isNaN(el.duration)) {
+        try { el.load() } catch (e) { /* noop */ }
+      }
+      const p = el.play()
+      if (p && typeof p.then === 'function') {
+        p.then(() => setIsPlaying(true)).catch(() => setIsPlaying(false))
+      } else {
+        setIsPlaying(true)
+      }
+    }
   }
 
   const handlePrev = () => {
     if (currentIndex > 0) {
+      pauseNativeAudio()
       nav(`/player/${officialMusic[currentIndex - 1].id}`)
       setCurrentTime(0)
     }
@@ -45,6 +88,7 @@ export default function Player() {
 
   const handleNext = () => {
     if (currentIndex < officialMusic.length - 1) {
+      pauseNativeAudio()
       nav(`/player/${officialMusic[currentIndex + 1].id}`)
       setCurrentTime(0)
     }
@@ -74,6 +118,7 @@ export default function Player() {
   }
 
   const handleSelectSong = (songId) => {
+    pauseNativeAudio()
     nav(`/player/${songId}`)
     setShowPlaylist(false)
     setCurrentTime(0)
@@ -82,7 +127,7 @@ export default function Player() {
   return (
     <div className="player-page">
       <div className="player-header">
-        <button className="back-btn" onClick={() => nav(-1)}><ChevronLeft size={24} strokeWidth={1.5} /></button>
+        <button className="back-btn" onClick={() => { pauseNativeAudio(); nav('/library') }}><ChevronLeft size={24} strokeWidth={1.5} /></button>
         <button 
           className={`fav-btn ${isFavorite ? 'active' : ''}`}
           onClick={() => toggleFavorite(song.id)}
@@ -103,6 +148,7 @@ export default function Player() {
 
       <div className="player-actions">
         <button className="action-btn-outline" onClick={() => {
+          pauseNativeAudio()
           // 预置该歌曲为主音乐，跳转调音台
           setCurrentMix({
             name: song.name,
@@ -120,7 +166,20 @@ export default function Player() {
           <Blend size={16} strokeWidth={1.5} />
           Mix Space
         </button>
-        <button className="action-btn-fill" onClick={() => nav('/focus/config')}>
+        <button className="action-btn-fill" onClick={() => {
+          pauseNativeAudio()
+          nav('/focus/config', { state: { mix: {
+            name: song.name,
+            mainMusicId: song.id,
+            mainMusicTitle: song.name,
+            mainVolume: 0.7,
+            bgNoise: null,
+            bgVolume: 0.5,
+            ambient: [],
+            binaural: null,
+            binauralVolume: 0
+          } } })
+        }}>
           <Target size={16} strokeWidth={1.5} />
           Begin Focus
         </button>
@@ -183,23 +242,23 @@ export default function Player() {
       </div>
 
       <audio
+        key={song.id}
         ref={audioRef}
         src={`sound/music/${song.id}.mp3`}
+        preload="metadata"
         onTimeUpdate={() => {
           if (audioRef.current) setCurrentTime(audioRef.current.currentTime)
         }}
         onLoadedMetadata={() => {
           if (audioRef.current) {
             setDuration(audioRef.current.duration)
-            // 切歌后若处于播放状态，立即播放新曲
-            if (isPlaying) {
-              audioRef.current.play().catch(() => {})
-            }
           }
         }}
         onEnded={handleNext}
         onError={() => {
-          setDuration(1800)
+          // 音频加载/解码失败时不要假装一个假的 duration，否则用户点了播放也没反应
+          // 保留 duration=0，让用户看到真实的"无法加载"状态
+          setIsPlaying(false)
         }}
       />
 

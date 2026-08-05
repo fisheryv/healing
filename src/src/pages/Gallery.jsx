@@ -118,7 +118,7 @@ export default function Gallery() {
               )}
               {a.status !== 'complete' && (
                 <div className="partial-tag">
-                  残卷·中断于{a.elapsedMin || 1}min
+                  Fragment · Abandoned at {a.elapsedMin || 1}min
                 </div>
               )}
               <div className="footer">

@@ -1,15 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../store.jsx'
 
 const DURATIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
 
 export default function FocusConfig() {
   const nav = useNavigate()
+  const location = useLocation()
   const { presets, currentMix, setCurrentMix } = useApp()
   const [duration, setDuration] = useState(25)
   const [showPicker, setShowPicker] = useState(false)
-  const [activeMix, setActiveMix] = useState(currentMix || presets[0] || null)
+  const [activeMix, setActiveMix] = useState(location.state?.mix || currentMix || presets[0] || null)
 
   const pickerRef = useRef(null)
 
