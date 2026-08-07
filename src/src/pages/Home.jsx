@@ -78,11 +78,11 @@ export default function Home() {
 
         <div className="section-title">
           <h3>Blog</h3>
-          <span className="more">More ›</span>
+          <span className="more" onClick={() => nav('/blog')} style={{ cursor: 'pointer' }}>More ›</span>
         </div>
         <div>
-          {blogs.map((b) => (
-            <div className="blog-row" key={b.id}>
+          {blogs.slice(0, 3).map((b) => (
+            <div className="blog-row" key={b.id} onClick={() => nav(`/blog/${b.id}`)} style={{ cursor: 'pointer' }}>
               <div className="blog-body">
                 <div className="title">{b.title}</div>
                 <div className="date">{b.date}</div>

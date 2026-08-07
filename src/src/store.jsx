@@ -3,6 +3,9 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect } 
 const AppContext = createContext(null)
 
 const STORAGE_KEY = 'healing_app_state_v1'
+const ACCOUNTS_KEY = 'healing_app_accounts_v1'
+const REMEMBER_KEY = 'healing_app_remember_v1'
+const BINDINGS_KEY = 'healing_app_bindings_v1'
 
 // ====== localStorage 持久化 ======
 function loadState() {
@@ -14,6 +17,167 @@ function loadState() {
     console.warn('[store] loadState failed:', e)
     return null
   }
+}
+
+// ====== 本地账户库（模拟后端） ======
+function loadAccounts() {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch (e) {
+    return []
+  }
+}
+
+function saveAccounts(accounts) {
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
+  } catch (e) {
+    console.warn('[store] saveAccounts failed:', e)
+  }
+}
+
+// 极简 hash，仅用于本地演示，不要用于真实生产
+function hashPassword(pwd) {
+  let h = 0
+  for (let i = 0; i < pwd.length; i++) {
+    h = (h << 5) - h + pwd.charCodeAt(i)
+    h |= 0
+  }
+  return 'h' + (h >>> 0).toString(16)
+}
+
+export const auth = {
+  // 注册：成功返回 { ok:true, user }，失败返回 { ok:false, error }
+  register({ email, nickname, password }) {
+    const accounts = loadAccounts()
+    if (accounts.some((a) => a.email === email)) {
+      return { ok: false, error: 'This email is already registered.' }
+    }
+    const account = {
+      email,
+      nickname: nickname || email.split('@')[0],
+      passwordHash: hashPassword(password),
+      createdAt: Date.now()
+    }
+    accounts.push(account)
+    saveAccounts(accounts)
+    return { ok: true, user: { email: account.email, nickname: account.nickname } }
+  },
+  // 登录
+  login({ email, password }) {
+    const accounts = loadAccounts()
+    const acc = accounts.find((a) => a.email === email)
+    if (!acc) {
+      return { ok: false, error: 'Account not found. Please sign up first.' }
+    }
+    if (acc.passwordHash !== hashPassword(password)) {
+      return { ok: false, error: 'Incorrect password. Please try again.' }
+    }
+    return { ok: true, user: { email: acc.email, nickname: acc.nickname } }
+  },
+  // 重置密码
+  resetPassword({ email, password }) {
+    const accounts = loadAccounts()
+    const idx = accounts.findIndex((a) => a.email === email)
+    if (idx === -1) {
+      return { ok: false, error: 'Account not found. Please sign up first.' }
+    }
+    accounts[idx].passwordHash = hashPassword(password)
+    saveAccounts(accounts)
+    return { ok: true }
+  },
+  // 修改密码（按需求：不校验旧密码，直接设置新密码）
+  changePassword({ email, newPassword }) {
+    const accounts = loadAccounts()
+    const idx = accounts.findIndex((a) => a.email === email)
+    if (idx === -1) {
+      // 账户库里没有（可能是旧版残留的登录态），直接成功，不阻塞
+      return { ok: true }
+    }
+    accounts[idx].passwordHash = hashPassword(newPassword)
+    saveAccounts(accounts)
+    return { ok: true }
+  },
+  // 是否存在该邮箱（用于注册/找回时判断）
+  exists(email) {
+    return loadAccounts().some((a) => a.email === email)
+  },
+  // 记住账号
+  saveRemember(email) {
+    try {
+      localStorage.setItem(REMEMBER_KEY, email)
+    } catch (e) {}
+  },
+  loadRemember() {
+    try {
+      return localStorage.getItem(REMEMBER_KEY) || ''
+    } catch (e) {
+      return ''
+    }
+  },
+  clearRemember() {
+    try {
+      localStorage.removeItem(REMEMBER_KEY)
+    } catch (e) {}
+  }
+}
+
+// ====== 第三方账号绑定（本地模拟） ======
+function loadBindings() {
+  try {
+    const raw = localStorage.getItem(BINDINGS_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw)
+  } catch (e) {
+    return {}
+  }
+}
+
+function saveBindings(bindings) {
+  try {
+    localStorage.setItem(BINDINGS_KEY, JSON.stringify(bindings))
+  } catch (e) {
+    console.warn('[store] saveBindings failed:', e)
+  }
+}
+
+export const bindings = {
+  // 获取某用户的所有绑定 { phone, google, apple }
+  get(email) {
+    const all = loadBindings()
+    return all[email] || { phone: null, google: null, apple: null }
+  },
+  // 绑定一个渠道，value 为绑定的标识（如手机号、第三方账号名）
+  bind(email, channel, value) {
+    const all = loadBindings()
+    if (!all[email]) all[email] = { phone: null, google: null, apple: null }
+    all[email][channel] = value
+    saveBindings(all)
+    return { ok: true }
+  },
+  // 解绑
+  unbind(email, channel) {
+    const all = loadBindings()
+    if (all[email]) {
+      all[email][channel] = null
+      saveBindings(all)
+    }
+    return { ok: true }
+  },
+  // 注销账号时清理
+  clear(email) {
+    const all = loadBindings()
+    delete all[email]
+    saveBindings(all)
+  }
+}
+
+// 简易字段校验
+export function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return re.test(email)
 }
 
 function saveState(state) {

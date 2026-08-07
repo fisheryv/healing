@@ -8,6 +8,7 @@ export default function Gallery() {
   const loc = useLocation()
   const [filter, setFilter] = useState('all')
   const [actionMenu, setActionMenu] = useState(null) // { art }
+  const [deleteTarget, setDeleteTarget] = useState(null) // art
   const [highlightId, setHighlightId] = useState(null)
   const highlightRef = useRef(null)
 
@@ -27,11 +28,14 @@ export default function Gallery() {
     }
   }, [loc.state])
 
-  const filtered = artworks.filter((a) => {
-    if (filter === 'complete') return a.status === 'complete'
-    if (filter === 'partial') return a.status !== 'complete'
-    return true
-  })
+  const filtered = artworks
+    .filter((a) => {
+      if (filter === 'complete') return a.status === 'complete'
+      if (filter === 'partial') return a.status !== 'complete'
+      return true
+    })
+    .slice()
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
 
   // 长按处理
   const longPressTimer = useRef(null)
@@ -65,9 +69,16 @@ export default function Gallery() {
 
   const handleDelete = () => {
     if (actionMenu?.art) {
-      deleteArtwork(actionMenu.art.id)
+      setDeleteTarget(actionMenu.art)
     }
     setActionMenu(null)
+  }
+
+  const confirmDelete = () => {
+    if (deleteTarget) {
+      deleteArtwork(deleteTarget.id)
+    }
+    setDeleteTarget(null)
   }
 
   const handleViewDetail = () => {
@@ -118,7 +129,7 @@ export default function Gallery() {
               )}
               {a.status !== 'complete' && (
                 <div className="partial-tag">
-                  Fragment · Abandoned at {a.elapsedMin || 1}min
+                  Fragment · {a.interruptReason === 'distracted' ? 'Distracted' : 'Abandoned'} at {a.elapsedMin || 1}min
                 </div>
               )}
               <div className="footer">
@@ -139,6 +150,20 @@ export default function Gallery() {
               <button className="btn block" onClick={handleViewDetail}>View Detail</button>
               <button className="btn ghost block" style={{ color: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={handleDelete}>Delete</button>
               <button className="btn ghost block" onClick={() => setActionMenu(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 删除二次确认 */}
+      {deleteTarget && (
+        <div className="modal-mask" onClick={() => setDeleteTarget(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h4>Delete Artwork</h4>
+            <p>Are you sure you want to delete this artwork? This action cannot be undone.</p>
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={confirmDelete}>Delete</button>
             </div>
           </div>
         </div>

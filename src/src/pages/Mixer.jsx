@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../store.jsx'
 import { officialMusic, noiseOptions, atmosOptions, binauralOptions, findMusicById } from '../data.js'
@@ -43,6 +43,16 @@ export default function Mixer() {
     setTimeout(() => setToast(''), 1500)
   }
 
+  // 跟踪最新状态，用于卸载时同步到 store（实现跨页面保留选择）
+  const stateRef = useRef({ dirty: false })
+  useEffect(() => {
+    stateRef.current = {
+      dirty,
+      mix: buildMix(),
+      hasAny: !!(main || bgNoise || atmos.length > 0 || binaural)
+    }
+  })
+
   // 进入页面：启动分析
   useEffect(() => {
     audioEngine.startAnalysis()
@@ -50,10 +60,16 @@ export default function Mixer() {
       audioEngine.stopPreview()
       audioEngine.stopAll()
       audioEngine.stopAnalysis()
+      // 卸载时把当前选择同步到 store：只要用户有改动且选择了内容，
+      // 就保留到 currentMix，使下次回到 Mixer 时能恢复（除非用户点击 Clear）。
+      const s = stateRef.current
+      if (s.dirty && s.hasAny) {
+        setCurrentMix(s.mix)
+      }
     }
   }, [])
 
-  // 从 currentMix 载入配置（从 FocusConfig 返回时）
+  // 从 currentMix 载入配置（进入页面时若有保存的 currentMix 则恢复）
   useEffect(() => {
     if (currentMix && !dirty) {
       if (currentMix.mainMusicId) {
@@ -151,13 +167,17 @@ export default function Mixer() {
   // 双耳节拍变更：预览
   useEffect(() => {
     if (binaural) {
-      audioEngine.previewTrack('binaural', binaural.src, biMuted ? 0 : biVol / 100)
+      // 预览时载波跟随当前选中主音乐的调性（若有），使预览听感与实际播放一致
+      audioEngine.previewTrack('binaural', binaural.src, biMuted ? 0 : biVol / 100, {
+        musicKey: main?.key,
+        musicMode: main?.mode
+      })
       setDirty(true)
     } else {
       audioEngine.stopPreview('binaural')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [binaural])
+  }, [binaural, main?.key, main?.mode])
 
   useEffect(() => {
     if (binaural) {
@@ -260,6 +280,7 @@ export default function Mixer() {
     setBiVol(30)
     setBiMuted(false)
     setDirty(false)
+    stateRef.current = { dirty: false, hasAny: false }
     flashToast('Cleared')
   }
 
@@ -482,7 +503,7 @@ export default function Mixer() {
             <h4>Unsaved Changes</h4>
             <p>Your current mix configuration has unsaved changes. What would you like to do?</p>
             <div className="modal-actions" style={{ flexDirection: 'column', gap: 8 }}>
-              <button className="btn block" onClick={() => { setShowUnsaved(false); setShowSave(true) }}>Save & Start</button>
+              <button className="btn block" onClick={() => { setShowUnsaved(false); setShowSave(true); setPendingStart(true) }}>Save & Start</button>
               <button className="btn ghost block" onClick={() => { setShowUnsaved(false); doStart() }}>Just Start</button>
               <button className="btn ghost block" onClick={() => setShowUnsaved(false)}>Cancel</button>
             </div>

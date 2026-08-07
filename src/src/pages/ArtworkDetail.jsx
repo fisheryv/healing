@@ -102,11 +102,105 @@ export default function ArtworkDetail() {
   const nav = useNavigate()
   const { artworks } = useApp()
   const [scale, setScale] = useState(1)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
   const [showShare, setShowShare] = useState(false)
   const [shareToast, setShareToast] = useState('')
   const pinchRef = useRef({ dist: 0, scale: 1 })
+  const dragRef = useRef({ dragging: false, startX: 0, startY: 0, posX: 0, posY: 0, moved: false })
+  const canvasRef = useRef(null)
+  const imgRef = useRef(null) // img 元素（用于读取 naturalWidth/naturalHeight）
 
   const art = artworks.find((a) => a.id === id)
+
+  // 计算 contain 自适应后画作的实际渲染尺寸（scale=1 时）
+  // 对于 SVG（无 previewUrl）使用 viewBox 比例
+  const getArtRenderSize = () => {
+    const canvasEl = canvasRef.current
+    if (!canvasEl) return null
+    const cw = canvasEl.clientWidth
+    const ch = canvasEl.clientHeight
+    let aspect = 1 // 画作宽高比（w/h）
+    if (art?.previewUrl && imgRef.current && imgRef.current.naturalWidth) {
+      aspect = imgRef.current.naturalWidth / imgRef.current.naturalHeight
+    } else if (art) {
+      // SVG viewBox 是 -1.2 -1.2 2.4 2.4，即正方形
+      aspect = 1
+    } else {
+      return null
+    }
+    // contain：画作在容器内最大化显示，保持比例
+    let w, h
+    if (cw / ch > aspect) {
+      // 容器更宽，画作高度填满，宽度按比例
+      h = ch
+      w = ch * aspect
+    } else {
+      // 容器更高，画作宽度填满，高度按比例
+      w = cw
+      h = cw / aspect
+    }
+    return { w, h }
+  }
+
+  // 限制拖动范围：画作缩放后不能完全拖出预览区域
+  const clampPos = (x, y, s) => {
+    const canvasEl = canvasRef.current
+    if (!canvasEl) return { x, y }
+    const size = getArtRenderSize()
+    if (!size) return { x, y }
+    const cw = canvasEl.clientWidth
+    const ch = canvasEl.clientHeight
+    // 画作缩放后的实际尺寸
+    const scaledW = size.w * s
+    const scaledH = size.h * s
+    // 可拖动范围 = (缩放后尺寸 - 容器尺寸) / 2，最小为 0
+    const maxX = Math.max(0, (scaledW - cw) / 2)
+    const maxY = Math.max(0, (scaledH - ch) / 2)
+    return {
+      x: Math.max(-maxX, Math.min(maxX, x)),
+      y: Math.max(-maxY, Math.min(maxY, y))
+    }
+  }
+
+  // 拖动（鼠标）
+  const onMouseDown = (e) => {
+    if (scale <= 1) return
+    dragRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, posX: pos.x, posY: pos.y, moved: false }
+  }
+  const onMouseMove = (e) => {
+    if (!dragRef.current.dragging) return
+    const dx = e.clientX - dragRef.current.startX
+    const dy = e.clientY - dragRef.current.startY
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true
+    setPos(clampPos(dragRef.current.posX + dx, dragRef.current.posY + dy, scale))
+  }
+  const onMouseUp = () => { dragRef.current.dragging = false }
+
+  // 拖动（触摸单指）
+  const onPointerDown = (e) => {
+    if (e.touches && e.touches.length !== 1) return
+    if (scale <= 1) return
+    const t = e.touches ? e.touches[0] : e
+    dragRef.current = { dragging: true, startX: t.clientX, startY: t.clientY, posX: pos.x, posY: pos.y, moved: false }
+  }
+  const onPointerMove = (e) => {
+    if (!dragRef.current.dragging) return
+    if (e.touches && e.touches.length !== 1) return
+    const t = e.touches ? e.touches[0] : e
+    const dx = t.clientX - dragRef.current.startX
+    const dy = t.clientY - dragRef.current.startY
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true
+    if (e.cancelable) e.preventDefault()
+    setPos(clampPos(dragRef.current.posX + dx, dragRef.current.posY + dy, scale))
+  }
+  const onPointerUp = () => { dragRef.current.dragging = false }
+
+  // 缩放变化时重置位置
+  const handleZoom = (newScale) => {
+    const ns = Math.max(1, Math.min(3, newScale))
+    setScale(ns)
+    if (ns <= 1.01) setPos({ x: 0, y: 0 })
+  }
 
   // 双指缩放
   useEffect(() => {
@@ -115,6 +209,7 @@ export default function ArtworkDetail() {
 
     const onTouchStart = (e) => {
       if (e.touches.length === 2) {
+        dragRef.current.dragging = false
         const dx = e.touches[0].clientX - e.touches[1].clientX
         const dy = e.touches[0].clientY - e.touches[1].clientY
         pinchRef.current.dist = Math.hypot(dx, dy)
@@ -128,8 +223,7 @@ export default function ArtworkDetail() {
         const dx = e.touches[0].clientX - e.touches[1].clientX
         const dy = e.touches[0].clientY - e.touches[1].clientY
         const dist = Math.hypot(dx, dy)
-        const newScale = Math.max(0.5, Math.min(3, pinchRef.current.scale * (dist / pinchRef.current.dist)))
-        setScale(newScale)
+        handleZoom(pinchRef.current.scale * (dist / pinchRef.current.dist))
       }
     }
 
@@ -137,7 +231,7 @@ export default function ArtworkDetail() {
       if (e.ctrlKey) {
         e.preventDefault()
         const delta = e.deltaY > 0 ? -0.1 : 0.1
-        setScale((s) => Math.max(0.5, Math.min(3, s + delta)))
+        handleZoom(scale + delta)
       }
     }
 
@@ -277,11 +371,20 @@ export default function ArtworkDetail() {
       </div>
 
       <div
-        className="artwork-detail-canvas"
+        ref={canvasRef}
+        className={'artwork-detail-canvas' + (scale > 1 ? ' draggable' : '')}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+        onTouchStart={onPointerDown}
+        onTouchMove={onPointerMove}
+        onTouchEnd={onPointerUp}
+        style={{ cursor: scale > 1 ? (dragRef.current.dragging ? 'grabbing' : 'grab') : 'default' }}
       >
-        <div className="artwork-detail-canvas-inner" style={{ transform: `scale(${scale})`, transition: 'transform 0.1s' }}>
+        <div className="artwork-detail-canvas-inner" style={{ transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, transition: dragRef.current.dragging ? 'none' : 'transform 0.1s' }}>
           {art.previewUrl ? (
-            <img src={art.previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img ref={imgRef} src={art.previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} draggable={false} />
           ) : (
             <svg viewBox="-1.2 -1.2 2.4 2.4" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: '100%', background: '#0c0c0c' }}>
               <path d={makePath(art.id, art.curveType, art.params)} stroke={strokeColor} strokeWidth="0.01" fill="none" />
@@ -291,9 +394,9 @@ export default function ArtworkDetail() {
       </div>
 
       <div className="artwork-detail-controls">
-        <button onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}><ZoomOut size={18} strokeWidth={1.5} /></button>
+        <button onClick={() => handleZoom(scale - 0.2)}><ZoomOut size={18} strokeWidth={1.5} /></button>
         <span className="zoom-val">{Math.round(scale * 100)}%</span>
-        <button onClick={() => setScale((s) => Math.min(3, s + 0.2))}><ZoomIn size={18} strokeWidth={1.5} /></button>
+        <button onClick={() => handleZoom(scale + 0.2)}><ZoomIn size={18} strokeWidth={1.5} /></button>
       </div>
 
       {art.quote && (
@@ -320,12 +423,14 @@ export default function ArtworkDetail() {
           <span className="label">Mix</span>
           <span className="value">{art.mixName || '—'}</span>
         </div>
-        {art.status !== 'complete' && (
-          <div className="info-row">
-            <span className="label">Status</span>
-            <span className="value" style={{ color: '#9a4a4a' }}>Fragment · Abandoned at {art.elapsedMin || 1}min</span>
-          </div>
-        )}
+        <div className="info-row">
+          <span className="label">Status</span>
+          {art.status === 'complete' ? (
+            <span className="value" style={{ color: '#4a7a4a' }}>Complete</span>
+          ) : (
+            <span className="value" style={{ color: '#9a4a4a' }}>Fragment · {art.interruptReason === 'distracted' ? 'Distracted' : 'Abandoned'} at {art.elapsedMin || 1}min</span>
+          )}
+        </div>
       </div>
 
       {/* 分享菜单 */}

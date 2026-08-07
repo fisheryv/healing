@@ -6,7 +6,8 @@ import { officialMusic } from '../data.js'
 export default function Library() {
   const [tab, setTab] = useState('official')
   const [search, setSearch] = useState('')
-  const { favorites, toggleFavorite, presets, deletePreset, setCurrentMix } = useApp()
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const { favorites, toggleFavorite, presets, deletePreset } = useApp()
   const nav = useNavigate()
 
   const filtered = officialMusic.filter(
@@ -74,7 +75,7 @@ export default function Library() {
             </div>
           ) : (
             presets.map((p) => (
-              <div className="row" key={p.id} onClick={() => { setCurrentMix(p); nav('/focus/config') }} style={{ cursor: 'pointer' }}>
+              <div className="row" key={p.id} onClick={() => { nav('/focus/config', { state: { mix: p } }) }} style={{ cursor: 'pointer' }}>
                 <div className="thumb">≋</div>
                 <div className="info">
                   <div className="name">{p.name}</div>
@@ -86,11 +87,27 @@ export default function Library() {
                 </div>
                 <div className="heart" onClick={(e) => {
                   e.stopPropagation()
-                  if (confirm('Are you sure you want to delete this preset? This action cannot be undone.')) deletePreset(p.id)
+                  setDeleteTarget(p)
                 }}>×</div>
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="modal-mask" onClick={() => setDeleteTarget(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h4>Delete Mix</h4>
+            <p>Are you sure you want to delete this preset? This action cannot be undone.</p>
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={() => {
+                deletePreset(deleteTarget.id)
+                setDeleteTarget(null)
+              }}>Delete</button>
+            </div>
+          </div>
         </div>
       )}
 

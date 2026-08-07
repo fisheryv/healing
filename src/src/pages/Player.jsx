@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Play, Pause, SkipBack, SkipForward, ListMusic, VolumeX, Heart, Blend, Target, Repeat, ChevronLeft } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, ListMusic, VolumeX, Heart, Blend, Target, Repeat, Repeat1, Shuffle, ChevronLeft } from 'lucide-react'
 import { officialMusic } from '../data.js'
 import { useApp } from '../store.jsx'
 
@@ -8,16 +8,30 @@ export default function Player() {
   const { id } = useParams()
   const nav = useNavigate()
   const audioRef = useRef(null)
-  const { favorites, toggleFavorite, setCurrentMix } = useApp()
+  const { favorites, toggleFavorite, setCurrentMix, currentMix } = useApp()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(80)
   const [showVolume, setShowVolume] = useState(false)
   const [showPlaylist, setShowPlaylist] = useState(false)
-  
-  const currentIndex = officialMusic.findIndex(m => m.id === id)
-  const song = officialMusic[currentIndex >= 0 ? currentIndex : 0]
+  // 播放模式：'order' 顺序播放 / 'repeat' 单曲循环 / 'shuffle' 随机播放
+  const [playMode, setPlayMode] = useState('order')
+  // 随机模式下的乱序列表（id 数组）；order 模式下为 null
+  const [shuffleOrder, setShuffleOrder] = useState(null)
+
+  // 活动播放列表：order 模式为原始有序列表，shuffle 模式为乱序列表
+  const playList = useMemo(() => {
+    if (playMode === 'shuffle' && shuffleOrder) {
+      return shuffleOrder
+        .map((sid) => officialMusic.find((m) => m.id === sid))
+        .filter(Boolean)
+    }
+    return officialMusic
+  }, [playMode, shuffleOrder])
+
+  const currentIndex = playList.findIndex((m) => m.id === id)
+  const song = playList[currentIndex >= 0 ? currentIndex : 0] || officialMusic[0]
   const isFavorite = favorites.includes(song.id)
 
   useEffect(() => {
@@ -41,10 +55,43 @@ export default function Player() {
   // 切歌时重置进度状态。不调用 el.load()——
   // 通过给 <audio> 加 key={song.id}，切歌时 React 会自动重建元素，
   // 浏览器自然加载新 src，不会出现 useEffect 与浏览器加载互相中断的问题。
+  // 切歌时重置进度状态。不调用 el.load()——
+  // 通过给 <audio> 加 key={song.id}，切歌时 React 会自动重建元素，
+  // 浏览器自然加载新 src，不会出现 useEffect 与浏览器加载互相中断的问题。
+  // 自动播放：尝试在 useEffect 中调用 play()。移动端（尤其 iOS Safari）
+  // 可能因自动播放策略拒绝，此时显示"点击播放"遮罩，让用户手动触发。
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false)
+
   useEffect(() => {
     setCurrentTime(0)
     setDuration(0)
-    setIsPlaying(false)
+    setAutoplayBlocked(false)
+    const el = audioRef.current
+    if (el) {
+      // 等元数据加载后再尝试播放
+      const tryPlay = () => {
+        const p = el.play()
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            setIsPlaying(true)
+            setAutoplayBlocked(false)
+          }).catch(() => {
+            // 自动播放被拒绝（移动端 autoplay policy）
+            setIsPlaying(false)
+            setAutoplayBlocked(true)
+          })
+        } else {
+          setIsPlaying(true)
+        }
+      }
+      // onLoadedMetadata 触发时尝试播放；若已加载则直接播放
+      if (el.readyState >= 1) {
+        tryPlay()
+      } else {
+        el.addEventListener('loadedmetadata', tryPlay, { once: true })
+        return () => el.removeEventListener('loadedmetadata', tryPlay)
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
@@ -81,16 +128,66 @@ export default function Player() {
   const handlePrev = () => {
     if (currentIndex > 0) {
       pauseNativeAudio()
-      nav(`/player/${officialMusic[currentIndex - 1].id}`)
+      nav(`/player/${playList[currentIndex - 1].id}`)
       setCurrentTime(0)
     }
   }
 
   const handleNext = () => {
-    if (currentIndex < officialMusic.length - 1) {
+    if (currentIndex < playList.length - 1) {
       pauseNativeAudio()
-      nav(`/player/${officialMusic[currentIndex + 1].id}`)
+      nav(`/player/${playList[currentIndex + 1].id}`)
       setCurrentTime(0)
+    }
+  }
+
+  // 生成乱序列表：当前歌曲放第一位，其余随机打乱
+  const buildShuffleOrder = (currentSongId) => {
+    const others = officialMusic.filter((m) => m.id !== currentSongId)
+    // Fisher-Yates 洗牌
+    for (let i = others.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[others[i], others[j]] = [others[j], others[i]]
+    }
+    return [currentSongId, ...others.map((m) => m.id)]
+  }
+
+  // 切换播放模式：order -> repeat -> shuffle -> order ...
+  const cyclePlayMode = () => {
+    setPlayMode((m) => {
+      if (m === 'order') {
+        return 'repeat'
+      } else if (m === 'repeat') {
+        // 进入 shuffle：以当前歌曲为起点生成乱序列表
+        setShuffleOrder(buildShuffleOrder(song.id))
+        return 'shuffle'
+      } else {
+        // 回到 order：清掉乱序列表，恢复有序
+        setShuffleOrder(null)
+        return 'order'
+      }
+    })
+  }
+
+  // 播放结束处理：根据播放模式决定行为
+  const handleEnded = () => {
+    if (playMode === 'repeat') {
+      // 单曲循环：重置进度并重新播放
+      const el = audioRef.current
+      if (el) {
+        el.currentTime = 0
+        const p = el.play()
+        if (p && typeof p.then === 'function') {
+          p.then(() => setIsPlaying(true)).catch(() => setIsPlaying(false))
+        } else {
+          setIsPlaying(true)
+        }
+      }
+    } else if (playMode === 'shuffle') {
+      // 随机模式：沿乱序列表前进；到末尾则停留（与顺序播放末尾行为一致）
+      handleNext()
+    } else {
+      handleNext()
     }
   }
 
@@ -149,17 +246,19 @@ export default function Player() {
       <div className="player-actions">
         <button className="action-btn-outline" onClick={() => {
           pauseNativeAudio()
-          // 预置该歌曲为主音乐，跳转调音台
+          // 预置该歌曲为主音乐，跳转调音台。
+          // 只替换 main music，保留 currentMix 中已有的 noise/ambient/binaural（若有）。
+          const prev = currentMix || {}
           setCurrentMix({
-            name: song.name,
+            name: prev.name || song.name,
             mainMusicId: song.id,
             mainMusicTitle: song.name,
-            mainVolume: 0.7,
-            bgNoise: null,
-            bgVolume: 0.5,
-            ambient: [],
-            binaural: null,
-            binauralVolume: 0
+            mainVolume: prev.mainVolume != null ? prev.mainVolume : 0.7,
+            bgNoise: prev.bgNoise ?? null,
+            bgVolume: prev.bgVolume != null ? prev.bgVolume : 0.5,
+            ambient: prev.ambient ?? [],
+            binaural: prev.binaural ?? null,
+            binauralVolume: prev.binauralVolume != null ? prev.binauralVolume : 0
           })
           nav('/mixer')
         }}>
@@ -203,8 +302,15 @@ export default function Player() {
       </div>
 
       <div className="player-controls">
-        <button className="control-btn">
-          <Repeat size={22} strokeWidth={1.5} />
+        <button
+          className={'control-btn mode-' + playMode}
+          onClick={cyclePlayMode}
+          aria-label={`Play mode: ${playMode}`}
+          title={playMode === 'order' ? 'Order' : playMode === 'repeat' ? 'Repeat One' : 'Shuffle'}
+        >
+          {playMode === 'order' && <Repeat size={22} strokeWidth={1.5} />}
+          {playMode === 'repeat' && <Repeat1 size={22} strokeWidth={1.5} />}
+          {playMode === 'shuffle' && <Shuffle size={22} strokeWidth={1.5} />}
         </button>
         <button className="control-btn" onClick={handlePrev} disabled={currentIndex <= 0}>
           <SkipBack size={26} strokeWidth={1.5} />
@@ -212,7 +318,7 @@ export default function Player() {
         <button className="play-btn" onClick={togglePlay}>
           {isPlaying ? <Pause size={32} strokeWidth={1.5} /> : <Play size={32} strokeWidth={1.5} />}
         </button>
-        <button className="control-btn" onClick={handleNext} disabled={currentIndex >= officialMusic.length - 1}>
+        <button className="control-btn" onClick={handleNext} disabled={currentIndex >= playList.length - 1}>
           <SkipForward size={26} strokeWidth={1.5} />
         </button>
         <div className="volume-wrapper">
@@ -241,11 +347,22 @@ export default function Player() {
         <img className="airpod airpod-right" src="assets/airpod.png" alt="" />
       </div>
 
+      {autoplayBlocked && !isPlaying && (
+        <div className="tap-to-play-overlay" onClick={togglePlay}>
+          <div className="play-icon-circle">
+            <Play size={40} strokeWidth={1.5} />
+          </div>
+          <span>Tap to Play</span>
+        </div>
+      )}
+
       <audio
         key={song.id}
         ref={audioRef}
         src={`sound/music/${song.id}.mp3`}
         preload="metadata"
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
         onTimeUpdate={() => {
           if (audioRef.current) setCurrentTime(audioRef.current.currentTime)
         }}
@@ -254,7 +371,7 @@ export default function Player() {
             setDuration(audioRef.current.duration)
           }
         }}
-        onEnded={handleNext}
+        onEnded={handleEnded}
         onError={() => {
           // 音频加载/解码失败时不要假装一个假的 duration，否则用户点了播放也没反应
           // 保留 duration=0，让用户看到真实的"无法加载"状态
@@ -266,7 +383,7 @@ export default function Player() {
         <div className="sheet-mask" onClick={() => setShowPlaylist(false)}>
           <div className="sheet playlist-sheet" onClick={(e) => e.stopPropagation()}>
             <h4>Up Next</h4>
-            {officialMusic.map((m, i) => (
+            {playList.map((m, i) => (
               <div
                 key={m.id}
                 className={'opt' + (m.id === song.id ? ' playing' : '')}

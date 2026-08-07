@@ -12,6 +12,8 @@
  *  - playChime() 完成提示音
  */
 
+import { findMusicById, getCarrierFreqFromKey } from './data.js'
+
 // ====== 单例 ======
 let ctx = null
 let masterGain = null
@@ -143,12 +145,15 @@ function stopNoiseTrack(id) {
 /**
  * 双耳节拍原理：左耳和右耳分别播放频率相差 beatHz 的纯音，
  * 大脑感知到两频率之差的"节拍"频率。
- * 例如 baseFreq=200, beatHz=10 → 左 195Hz / 右 205Hz
+ * 采用对称分布：左 = baseFreq − beatHz/2, 右 = baseFreq + beatHz/2
+ * 载波中心（左右平均）精确等于 baseFreq，便于对齐音乐调性主音。
+ * 例如 baseFreq=200, beatHz=10 → 左 195Hz / 右 205Hz，中心 200Hz
  */
 function startBinaural(id, baseFreq, beatHz) {
   const c = ensureCtx()
   stopBinaural(id)
 
+  const halfBeat = beatHz / 2
   const merger = c.createChannelMerger(2)
   const leftOsc = c.createOscillator()
   const rightOsc = c.createOscillator()
@@ -157,8 +162,8 @@ function startBinaural(id, baseFreq, beatHz) {
 
   leftOsc.type = 'sine'
   rightOsc.type = 'sine'
-  leftOsc.frequency.value = baseFreq
-  rightOsc.frequency.value = baseFreq + beatHz
+  leftOsc.frequency.value = baseFreq - halfBeat
+  rightOsc.frequency.value = baseFreq + halfBeat
 
   leftGain.gain.value = 0.15
   rightGain.gain.value = 0.15
@@ -298,7 +303,16 @@ export async function loadMix(mix, srcMap) {
   if (mix.binaural && srcMap[mix.binaural.id]) {
     const cfg = srcMap[mix.binaural.id]
     if (cfg.synth === 'binaural') {
-      startBinaural('binaural', cfg.baseFreq, cfg.beatHz)
+      // 根据主音乐调性计算载波中心频率，使双耳节拍与音乐调性吻合
+      let carrierFreq = cfg.baseFreq
+      if (mix.mainMusicId) {
+        const music = findMusicById(mix.mainMusicId)
+        if (music && music.key) {
+          const keyFreq = getCarrierFreqFromKey(music.key, music.mode)
+          if (keyFreq) carrierFreq = keyFreq
+        }
+      }
+      startBinaural('binaural', carrierFreq, cfg.beatHz)
       setTrackVolume('binaural', mix.binauralVolume ?? 0.3)
     }
   }
@@ -491,8 +505,14 @@ export function resumeContext() {
  * 先停止该 trackId 的旧预览，然后播放新的
  * trackId 作为预览轨道的 id（'main'/'bgNoise'/'binaural'/'atmos_0' 等）
  * 各 trackId 互不影响，可以多轨同时预览
+ * @param {string} trackId - 轨道 id
+ * @param {object|string} cfg - src 配置（路径或合成指令）
+ * @param {number} [volume=0.7] - 音量 0~1
+ * @param {object} [opts] - 额外选项
+ * @param {string} [opts.musicKey] - 主音音名（如 'C','A','F#'），双耳节拍预览时用于计算载波频率
+ * @param {string} [opts.musicMode] - 调式 'major'|'minor'
  */
-export async function previewTrack(trackId, cfg, volume = 0.7) {
+export async function previewTrack(trackId, cfg, volume = 0.7, opts = {}) {
   // 先停止该 trackId 的旧预览
   stopPreview(trackId)
   ensureCtx()
@@ -502,7 +522,13 @@ export async function previewTrack(trackId, cfg, volume = 0.7) {
     startNoiseTrack(trackId, cfg.type)
     setTrackVolume(trackId, volume)
   } else if (cfg.synth === 'binaural') {
-    startBinaural(trackId, cfg.baseFreq, cfg.beatHz)
+    // 预览双耳节拍时，若提供了音乐调性，则载波跟随调性
+    let carrierFreq = cfg.baseFreq
+    if (opts.musicKey) {
+      const keyFreq = getCarrierFreqFromKey(opts.musicKey, opts.musicMode)
+      if (keyFreq) carrierFreq = keyFreq
+    }
+    startBinaural(trackId, carrierFreq, cfg.beatHz)
     setTrackVolume(trackId, volume)
   } else if (typeof cfg === 'string') {
     try {

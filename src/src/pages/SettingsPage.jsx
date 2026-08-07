@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useApp } from '../store.jsx'
-import { ChevronLeft } from 'lucide-react'
+import { useApp, auth, bindings } from '../store.jsx'
+import { ChevronLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 
 /**
  * 账号安全设置页面
@@ -15,38 +15,86 @@ export default function SettingsPage() {
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [toast, setToast] = useState('')
-  const [feedback, setFeedback] = useState('')
+  const [toastType, setToastType] = useState('info')
+  const [showOld, setShowOld] = useState(false)
+  const [showNew, setShowNew] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
 
-  const flashToast = (msg) => {
+  const email = user?.account || ''
+  const [bindState, setBindState] = useState(() => email ? bindings.get(email) : { phone: null, google: null, apple: null })
+  const [bindChannel, setBindChannel] = useState(null)
+  const [bindValue, setBindValue] = useState('')
+  const [bindError, setBindError] = useState('')
+
+  const flashToast = (msg, t = 'info') => {
     setToast(msg)
-    setTimeout(() => setToast(''), 2000)
+    setToastType(t)
+    setTimeout(() => setToast(''), 2200)
   }
 
-  const handleChangePassword = () => {
-    if (!oldPwd || !newPwd || !confirmPwd) {
-      flashToast('Please fill in all fields')
+  const handleChangePassword = async () => {
+    if (!newPwd || !confirmPwd) {
+      flashToast('Please fill in all fields', 'error')
       return
     }
     if (newPwd !== confirmPwd) {
-      flashToast('Passwords do not match')
+      flashToast('Passwords do not match', 'error')
       return
     }
     if (newPwd.length < 6) {
-      flashToast('Password must be at least 6 characters')
+      flashToast('Password must be at least 6 characters', 'error')
       return
     }
-    // Mock: 实际应调用后端
-    flashToast('Password changed ✓')
+    setLoading(true)
+    await new Promise((r) => setTimeout(r, 500))
+    if (email) auth.changePassword({ email, newPassword: newPwd })
+    setLoading(false)
+    flashToast('Password changed ✓', 'success')
     setOldPwd('')
     setNewPwd('')
     setConfirmPwd('')
   }
 
   const handleDeactivate = () => {
-    // Mock: 实际应调用后端注销
+    if (email) {
+      auth.clearRemember()
+      bindings.clear(email)
+    }
     setUser(null)
     nav('/login', { replace: true })
+  }
+
+  const openBindDialog = (channel) => {
+    setBindChannel(channel)
+    setBindValue('')
+    setBindError('')
+  }
+
+  const confirmBind = () => {
+    if (!bindChannel) return
+    const val = bindValue.trim()
+    if (!val) {
+      setBindError('Please enter a value')
+      return
+    }
+    if (bindChannel === 'phone' && !/^\+?[\d\s-]{6,}$/.test(val)) {
+      setBindError('Please enter a valid phone number')
+      return
+    }
+    bindings.bind(email, bindChannel, val)
+    setBindState(bindings.get(email))
+    flashToast(`${bindChannel} linked ✓`, 'success')
+    setBindChannel(null)
+    setBindValue('')
+    setBindError('')
+  }
+
+  const handleUnbind = (channel) => {
+    bindings.unbind(email, channel)
+    setBindState(bindings.get(email))
+    flashToast(`${channel} unlinked`, 'info')
   }
 
   const titles = {
@@ -68,33 +116,51 @@ export default function SettingsPage() {
           <>
             <div className="field">
               <label>Current Password</label>
-              <input
-                type="password"
-                value={oldPwd}
-                onChange={(e) => setOldPwd(e.target.value)}
-                placeholder="Enter current password"
-              />
+              <div className="field-pwd">
+                <input
+                  type={showOld ? 'text' : 'password'}
+                  value={oldPwd}
+                  onChange={(e) => setOldPwd(e.target.value)}
+                  placeholder="Enter current password (optional)"
+                  autoComplete="current-password"
+                />
+                <button type="button" className="pwd-toggle" onClick={() => setShowOld((v) => !v)} tabIndex={-1}>
+                  {showOld ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div className="field">
               <label>New Password</label>
-              <input
-                type="password"
-                value={newPwd}
-                onChange={(e) => setNewPwd(e.target.value)}
-                placeholder="At least 6 characters"
-              />
+              <div className="field-pwd">
+                <input
+                  type={showNew ? 'text' : 'password'}
+                  value={newPwd}
+                  onChange={(e) => setNewPwd(e.target.value)}
+                  placeholder="At least 6 characters"
+                  autoComplete="new-password"
+                />
+                <button type="button" className="pwd-toggle" onClick={() => setShowNew((v) => !v)} tabIndex={-1}>
+                  {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div className="field">
               <label>Confirm New Password</label>
-              <input
-                type="password"
-                value={confirmPwd}
-                onChange={(e) => setConfirmPwd(e.target.value)}
-                placeholder="Re-enter new password"
-              />
+              <div className="field-pwd">
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)}
+                  placeholder="Re-enter new password"
+                  autoComplete="new-password"
+                />
+                <button type="button" className="pwd-toggle" onClick={() => setShowConfirm((v) => !v)} tabIndex={-1}>
+                  {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
-            <button className="btn block" style={{ marginTop: 24 }} onClick={handleChangePassword}>
-              Update Password
+            <button className="btn block" style={{ marginTop: 24 }} onClick={handleChangePassword} disabled={loading}>
+              {loading ? <><Loader2 size={16} className="spin" /> Updating…</> : 'Update Password'}
             </button>
           </>
         )}
@@ -106,30 +172,40 @@ export default function SettingsPage() {
                 <div className="binding-name">Email</div>
                 <div className="binding-value">{user?.account?.includes('@') ? user.account : 'Not bound'}</div>
               </div>
-              <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }}>
-                {user?.account?.includes('@') ? 'Manage' : 'Bind'}
-              </button>
+              <span className="binding-tag bound">Primary</span>
             </div>
             <div className="binding-row">
               <div className="binding-info">
                 <div className="binding-name">Phone</div>
-                <div className="binding-value">Not bound</div>
+                <div className="binding-value">{bindState.phone || 'Not bound'}</div>
               </div>
-              <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }}>Bind</button>
+              {bindState.phone ? (
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => handleUnbind('phone')}>Unlink</button>
+              ) : (
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => openBindDialog('phone')}>Link</button>
+              )}
             </div>
             <div className="binding-row">
               <div className="binding-info">
                 <div className="binding-name">Google</div>
-                <div className="binding-value">Not bound</div>
+                <div className="binding-value">{bindState.google || 'Not bound'}</div>
               </div>
-              <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }}>Bind</button>
+              {bindState.google ? (
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => handleUnbind('google')}>Unlink</button>
+              ) : (
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => openBindDialog('google')}>Link</button>
+              )}
             </div>
             <div className="binding-row">
               <div className="binding-info">
                 <div className="binding-name">Apple ID</div>
-                <div className="binding-value">Not bound</div>
+                <div className="binding-value">{bindState.apple || 'Not bound'}</div>
               </div>
-              <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }}>Bind</button>
+              {bindState.apple ? (
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => handleUnbind('apple')}>Unlink</button>
+              ) : (
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => openBindDialog('apple')}>Link</button>
+              )}
             </div>
           </div>
         )}
@@ -167,7 +243,32 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      {/* 绑定输入弹窗 */}
+      {bindChannel && (
+        <div className="modal-mask" onClick={() => setBindChannel(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h4>Link {bindChannel === 'phone' ? 'Phone' : bindChannel === 'google' ? 'Google' : 'Apple ID'}</h4>
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>{bindChannel === 'phone' ? 'Phone Number' : 'Account ID'}</label>
+              <input
+                type={bindChannel === 'phone' ? 'tel' : 'text'}
+                value={bindValue}
+                onChange={(e) => { setBindValue(e.target.value); setBindError('') }}
+                placeholder={bindChannel === 'phone' ? '+1 555 000 0000' : 'your-account-id'}
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && confirmBind()}
+              />
+              {bindError && <span className="field-error">{bindError}</span>}
+            </div>
+            <div className="modal-actions" style={{ marginTop: 18 }}>
+              <button className="btn ghost" onClick={() => setBindChannel(null)}>Cancel</button>
+              <button className="btn" onClick={confirmBind}>Link</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <div className={`toast toast-${toastType}`}>{toast}</div>}
     </div>
   )
 }

@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../store.jsx'
+import { resumeContext } from '../audioEngine'
+import { requestMotionPermission } from '../useScreenDown'
 
 const DURATIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
 
 export default function FocusConfig() {
   const nav = useNavigate()
   const location = useLocation()
-  const { presets, currentMix, setCurrentMix } = useApp()
+  const { presets, currentMix, setCurrentMix, settings } = useApp()
   const [duration, setDuration] = useState(25)
   const [showPicker, setShowPicker] = useState(false)
   const [activeMix, setActiveMix] = useState(location.state?.mix || currentMix || presets[0] || null)
@@ -30,6 +32,14 @@ export default function FocusConfig() {
 
   const handleStart = () => {
     if (!activeMix) return
+    // 必须在用户手势同步调用栈中：
+    // 1) resume AudioContext —— iOS/Android 自动播放策略要求
+    // 2) 请求 DeviceMotion 权限 —— iOS 13+ 要求
+    // 否则到了 FocusSession 的 useEffect 里再调用会被浏览器拦截。
+    try { resumeContext() } catch (e) { /* noop */ }
+    if (settings.screenDown) {
+      requestMotionPermission().catch(() => {})
+    }
     setCurrentMix(activeMix)
     nav('/focus/session', { state: { duration, mix: activeMix } })
   }

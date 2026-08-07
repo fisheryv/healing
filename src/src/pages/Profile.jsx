@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom'
 // 52 周 × 7 天
 const WEEKS = 52
 const DAYS = 7
-const TOTAL_CELLS = WEEKS * DAYS
 
 // 热力图单元格固定尺寸（px）
 const CELL_SIZE = 14
@@ -24,27 +23,31 @@ function getLevel(count) {
 }
 
 /**
- * 构建热力图数据：52周 × 7天，从今天往前推 364 天
+ * 构建热力图数据：52周 × 7天，最右侧一列对齐到当天所在的那一周
  * 返回 { cells: [{date, count, level, weekIdx, dayIdx}], monthLabels: [{weekIdx, label}] }
  */
 function buildHeatmap(records) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
+  // 只统计已完成的专注（排除残卷）
+  const completed = records.filter((r) => r.status === 'complete')
+
   // 统计每个日期的专注次数
   const dateCount = {}
-  records.forEach((r) => {
+  completed.forEach((r) => {
     const d = new Date(r.createdAt)
     d.setHours(0, 0, 0, 0)
     const key = d.toISOString().slice(0, 10)
     dateCount[key] = (dateCount[key] || 0) + 1
   })
 
-  // 计算 52 周前的起始日（对齐到周日）
-  const start = new Date(today)
-  start.setDate(start.getDate() - (TOTAL_CELLS - 1))
-  // 对齐到周日
-  start.setDate(start.getDate() - start.getDay())
+  // 以“今天所在周的周日”作为最后一列（w=WEEKS-1, d=0）对应的日期，
+  // 由此往前推算起始日，确保最右侧能看到当天。
+  const lastWeekStart = new Date(today)
+  lastWeekStart.setDate(lastWeekStart.getDate() - lastWeekStart.getDay())
+  const start = new Date(lastWeekStart)
+  start.setDate(start.getDate() - (WEEKS - 1) * 7)
 
   const cells = []
   const monthLabels = []
@@ -82,8 +85,10 @@ function buildHeatmap(records) {
  * 计算最长连续专注天数和当前连续天数（Streak）
  */
 function calcStreaks(records) {
+  // 只统计已完成的专注（排除残卷）
+  const completed = records.filter((r) => r.status === 'complete')
   const dates = new Set()
-  records.forEach((r) => {
+  completed.forEach((r) => {
     const d = new Date(r.createdAt)
     d.setHours(0, 0, 0, 0)
     dates.add(d.toISOString().slice(0, 10))
@@ -327,7 +332,7 @@ export default function Profile() {
           ) : (
             <div className="name editable" onClick={startEditName}>{user?.nickname || 'Friend'}</div>
           )}
-          <div className="id">{user?.account ? maskAccount(user.account) : 'guest'}</div>
+          <div className="id">{user?.account || 'guest'}</div>
         </div>
       </div>
 
@@ -492,14 +497,4 @@ function formatDuration(sec) {
   const h = Math.floor(sec / 3600)
   const m = Math.floor((sec % 3600) / 60)
   return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
-
-function maskAccount(acc) {
-  if (!acc) return ''
-  if (acc.includes('@')) {
-    const [name, domain] = acc.split('@')
-    return name[0] + '***@' + domain
-  }
-  if (acc.length >= 7) return acc.slice(0, 3) + '****' + acc.slice(-4)
-  return acc
 }
