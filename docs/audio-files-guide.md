@@ -41,12 +41,12 @@ public/sound/
 
 | 文件名 | 标签 |
 |--------|------|
-| `light-rain.mp3`   | 雨声 |
-| `heavy-rain.mp3`   | 暴雨 |
+| `light-rain.mp3`   | 细雨 |
+| `heavy-rain.mp3`   | 大雨 |
 | `waves.mp3`        | 海浪 |
-| `wind.mp3`         | 风声 |
-| `howling-wind.mp3`| 呼啸风 |
-| `wind-in-trees.mp3`| 林间风 |
+| `wind.mp3`         | 微风 |
+| `howling-wind.mp3`| 呼啸的风 |
+| `wind-in-trees.mp3`| 林间风声 |
 | `jungle.mp3`       | 森林 |
 | `river.mp3`        | 溪流 |
 | `waterfall.mp3`   | 瀑布 |
@@ -66,8 +66,11 @@ public/sound/
 | `walk-in-snow.mp3`    | 踏雪 |
 | `walk-on-gravel.mp3`  | 踏石 |
 | `walk-on-leaves.mp3`  | 踏叶 |
+| `chime.mp3`           | 风铃 |
+| `cat.mp3`             | 猫咪 |
+| `coffee.mp3`          | 咖啡研磨 |
 
-> 注：`pages` 和 `paper` 语义重复，项目只保留 `pages`。
+> 注：`pages` 和 `paper` 语义重复，项目只保留 `pages`。共 12 个点缀音，调音台中最多同时选择 2 个。
 
 ---
 
