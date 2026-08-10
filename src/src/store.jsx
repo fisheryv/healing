@@ -8,6 +8,10 @@ const ACCOUNTS_KEY = 'healing_app_accounts_v1'
 const REMEMBER_KEY = 'healing_app_remember_v1'
 const BINDINGS_KEY = 'healing_app_bindings_v1'
 const LANG_KEY = 'healing_app_lang_v1'
+const LOCK_KEY = 'healing_app_lock_v1'
+const CODE_KEY = 'healing_app_code_v1'
+const LOCK_MAX = 5
+const LOCK_MS = 30 * 60 * 1000
 
 // ====== localStorage 持久化 ======
 function loadState() {
@@ -109,59 +113,126 @@ function hashPassword(pwd) {
 
 export const auth = {
   // 注册：成功返回 { ok:true, user }，失败返回 { ok:false, error }
-  register({ email, nickname, password }) {
+  // account 字段可来自 email 或 phone；类型通过 type 区分
+  // recoveryQuestion/recoveryAnswer 用于账号恢复和忘记密码
+  register({ email, phone, nickname, password, type = 'email', recoveryQuestion = '', recoveryAnswer = '' }) {
     const accounts = loadAccounts()
-    if (accounts.some((a) => a.email === email)) {
-      return { ok: false, error: 'This email is already registered.' }
+    const id = type === 'phone' ? phone : email
+    if (accounts.some((a) => (a.email && a.email === email) || (a.phone && a.phone === phone))) {
+      return { ok: false, error: 'This account is already registered.' }
     }
     const account = {
-      email,
-      nickname: nickname || email.split('@')[0],
+      email: type === 'email' ? email : (email || ''),
+      phone: type === 'phone' ? phone : (phone || ''),
+      nickname: nickname || (type === 'email' ? email.split('@')[0] : 'user' + (phone || '').slice(-4)),
       passwordHash: hashPassword(password),
+      recoveryQuestion,
+      recoveryAnswer: hashPassword(recoveryAnswer.trim().toLowerCase()),
       createdAt: Date.now()
     }
     accounts.push(account)
     saveAccounts(accounts)
-    return { ok: true, user: { email: account.email, nickname: account.nickname } }
+    return { ok: true, user: { email: account.email, phone: account.phone, nickname: account.nickname, account: id } }
   },
-  // 登录
-  login({ email, password }) {
+  // 登录（支持 email 或 phone + 密码）
+  login({ email, phone, password, type = 'email' }) {
     const accounts = loadAccounts()
-    const acc = accounts.find((a) => a.email === email)
+    const id = type === 'phone' ? phone : email
+    // 锁定检查
+    const locks = loadLocks()
+    const lockInfo = locks[id]
+    if (lockInfo && Date.now() - lockInfo.lockedAt < LOCK_MS) {
+      const remainMin = Math.ceil((LOCK_MS - (Date.now() - lockInfo.lockedAt)) / 60000)
+      return { ok: false, error: `Account locked. Try again in ${remainMin} min.`, locked: true, remainMin }
+    }
+    // 锁定过期，清理
+    if (lockInfo && Date.now() - lockInfo.lockedAt >= LOCK_MS) {
+      delete locks[id]
+      saveLocks(locks)
+    }
+
+    const acc = type === 'phone'
+      ? accounts.find((a) => a.phone === phone)
+      : accounts.find((a) => a.email === email)
     if (!acc) {
       return { ok: false, error: 'Account not found. Please sign up first.' }
     }
     if (acc.passwordHash !== hashPassword(password)) {
-      return { ok: false, error: 'Incorrect password. Please try again.' }
+      // 记录错误次数
+      const newLocks = loadLocks()
+      const cur = newLocks[id] || { count: 0, lockedAt: 0 }
+      cur.count += 1
+      if (cur.count >= LOCK_MAX) {
+        cur.lockedAt = Date.now()
+        cur.count = 0
+        newLocks[id] = cur
+        saveLocks(newLocks)
+        return { ok: false, error: 'Account locked for 30 minutes due to too many failed attempts.', locked: true, remainMin: 30 }
+      }
+      newLocks[id] = cur
+      saveLocks(newLocks)
+      const left = LOCK_MAX - cur.count
+      return { ok: false, error: `Incorrect password. ${left} attempt${left === 1 ? '' : 's'} left before lockout.` }
     }
-    return { ok: true, user: { email: acc.email, nickname: acc.nickname } }
+    // 成功登录，清除锁定
+    const newLocks = loadLocks()
+    if (newLocks[id]) {
+      delete newLocks[id]
+      saveLocks(newLocks)
+    }
+    return { ok: true, user: { email: acc.email, phone: acc.phone, nickname: acc.nickname, account: id } }
   },
-  // 重置密码
-  resetPassword({ email, password }) {
+  // 获取某账号的安全问题（用于忘记密码时展示）
+  getRecoveryQuestion({ email, phone, type = 'email' }) {
     const accounts = loadAccounts()
-    const idx = accounts.findIndex((a) => a.email === email)
+    const acc = type === 'phone'
+      ? accounts.find((a) => a.phone === phone)
+      : accounts.find((a) => a.email === email)
+    if (!acc) return { ok: false, error: 'Account not found. Please sign up first.' }
+    return { ok: true, question: acc.recoveryQuestion || '' }
+  },
+  // 重置密码：通过安全问题答案验证
+  resetPassword({ email, phone, password, recoveryAnswer = '', type = 'email' }) {
+    const accounts = loadAccounts()
+    const idx = type === 'phone'
+      ? accounts.findIndex((a) => a.phone === phone)
+      : accounts.findIndex((a) => a.email === email)
     if (idx === -1) {
       return { ok: false, error: 'Account not found. Please sign up first.' }
     }
+    if (!accounts[idx].recoveryAnswer || accounts[idx].recoveryAnswer !== hashPassword(recoveryAnswer.trim().toLowerCase())) {
+      return { ok: false, error: 'Incorrect recovery answer.' }
+    }
     accounts[idx].passwordHash = hashPassword(password)
     saveAccounts(accounts)
-    return { ok: true }
+    // 同时返回用户信息以便自动登录
+    const acc = accounts[idx]
+    const id = type === 'phone' ? acc.phone : acc.email
+    return { ok: true, user: { email: acc.email, phone: acc.phone, nickname: acc.nickname, account: id } }
   },
-  // 修改密码（按需求：不校验旧密码，直接设置新密码）
-  changePassword({ email, newPassword }) {
+  // 修改密码：校验旧密码
+  changePassword({ email, phone, oldPassword, newPassword, type = 'email' }) {
     const accounts = loadAccounts()
-    const idx = accounts.findIndex((a) => a.email === email)
+    const idx = type === 'phone'
+      ? accounts.findIndex((a) => a.phone === phone)
+      : accounts.findIndex((a) => a.email === email)
     if (idx === -1) {
       // 账户库里没有（可能是旧版残留的登录态），直接成功，不阻塞
       return { ok: true }
+    }
+    if (accounts[idx].passwordHash !== hashPassword(oldPassword)) {
+      return { ok: false, error: 'Current password is incorrect.' }
     }
     accounts[idx].passwordHash = hashPassword(newPassword)
     saveAccounts(accounts)
     return { ok: true }
   },
-  // 是否存在该邮箱（用于注册/找回时判断）
-  exists(email) {
-    return loadAccounts().some((a) => a.email === email)
+  // 是否存在该账号（email 或 phone）
+  exists(emailOrPhone, type = 'email') {
+    const accounts = loadAccounts()
+    return type === 'phone'
+      ? accounts.some((a) => a.phone === emailOrPhone)
+      : accounts.some((a) => a.email === emailOrPhone)
   },
   // 记住账号
   saveRemember(email) {
@@ -233,10 +304,81 @@ export const bindings = {
   }
 }
 
-// 简易字段校验
+// ====== 验证码模块（10 分钟有效期，localStorage 持久化） ======
+export const codes = {
+  // 生成并保存验证码（10 分钟有效）
+  send(target, type = 'email') {
+    const code = String(Math.floor(100000 + Math.random() * 900000))
+    try {
+      const all = JSON.parse(localStorage.getItem(CODE_KEY) || '{}')
+      all[`${type}:${target}`] = { code, sentAt: Date.now() }
+      localStorage.setItem(CODE_KEY, JSON.stringify(all))
+    } catch (e) { /* noop */ }
+    return code
+  },
+  // 校验验证码：返回 true/false
+  verify(target, inputCode, type = 'email') {
+    if (!inputCode) return false
+    try {
+      const all = JSON.parse(localStorage.getItem(CODE_KEY) || '{}')
+      const entry = all[`${type}:${target}`]
+      if (!entry) return false
+      // 10 分钟有效期
+      if (Date.now() - entry.sentAt > 10 * 60 * 1000) {
+        delete all[`${type}:${target}`]
+        localStorage.setItem(CODE_KEY, JSON.stringify(all))
+        return false
+      }
+      return entry.code === inputCode
+    } catch (e) {
+      return false
+    }
+  },
+  // 清除某目标验证码
+  clear(target, type = 'email') {
+    try {
+      const all = JSON.parse(localStorage.getItem(CODE_KEY) || '{}')
+      delete all[`${type}:${target}`]
+      localStorage.setItem(CODE_KEY, JSON.stringify(all))
+    } catch (e) { /* noop */ }
+  }
+}
 export function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return re.test(email)
+}
+
+// PRD: 密码 8-20 位，需同时包含字母和数字
+export function validatePassword(pwd) {
+  if (typeof pwd !== 'string') return false
+  if (pwd.length < 8 || pwd.length > 20) return false
+  const hasLetter = /[a-zA-Z]/.test(pwd)
+  const hasDigit = /\d/.test(pwd)
+  return hasLetter && hasDigit
+}
+
+// 手机号格式校验（默认 +86，11 位数字）
+export function validatePhone(phone) {
+  if (typeof phone !== 'string') return false
+  const digits = phone.replace(/\D/g, '')
+  return digits.length >= 10 && digits.length <= 15
+}
+
+// ====== 登录安全锁定（localStorage 持久化） ======
+function loadLocks() {
+  try {
+    const raw = localStorage.getItem(LOCK_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw)
+  } catch (e) {
+    return {}
+  }
+}
+
+function saveLocks(locks) {
+  try {
+    localStorage.setItem(LOCK_KEY, JSON.stringify(locks))
+  } catch (e) { /* noop */ }
 }
 
 function saveState(state) {

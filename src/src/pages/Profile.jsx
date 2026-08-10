@@ -419,6 +419,7 @@ export default function Profile() {
         <Stat num={totalComplete} label={t('profile.sessions')} />
         <Stat num={streak} label={t('profile.streak')} />
         <Stat num={longest} label={t('profile.longestStreak')} />
+        <Stat num={artworks.length} label={t('profile.galleryArtworks')} />
       </div>
 
       <div className="settings-group">{t('profile.focusSettings')}</div>

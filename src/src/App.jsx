@@ -5,6 +5,7 @@ import Onboarding from './pages/Onboarding.jsx'
 import Login from './pages/Login.jsx'
 import SignUp from './pages/SignUp.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
+import NicknameSetup from './pages/NicknameSetup.jsx'
 import Home from './pages/Home.jsx'
 import Library from './pages/Library.jsx'
 import Mixer from './pages/Mixer.jsx'
@@ -19,7 +20,19 @@ import BlogDetail from './pages/BlogDetail.jsx'
 import SettingsPage, { AboutPage } from './pages/SettingsPage.jsx'
 
 const TABS = ['/home', '/library', '/mixer', '/gallery', '/profile']
-const FULLSCREEN = ['/onboarding', '/login', '/register', '/forgot', '/focus/config', '/focus/session', '/player', '/artwork', '/settings', '/about', '/blog']
+const FULLSCREEN = ['/onboarding', '/login', '/register', '/forgot', '/nickname-setup', '/focus/config', '/focus/session', '/player', '/artwork', '/settings', '/about', '/blog']
+
+// 需要登录才能访问的路径
+const PROTECTED = ['/home', '/library', '/mixer', '/gallery', '/profile', '/focus/config', '/focus/session', '/settings', '/about']
+
+function RequireAuth({ children }) {
+  const { user } = useApp()
+  const location = useLocation()
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
+  return children
+}
 
 function Shell() {
   const location = useLocation()
@@ -37,20 +50,21 @@ function Shell() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<SignUp />} />
             <Route path="/forgot" element={<ForgotPassword />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/library" element={<Library />} />
-            <Route path="/mixer" element={<Mixer />} />
-            <Route path="/gallery" element={<Gallery />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/focus/config" element={<FocusConfig />} />
-            <Route path="/focus/session" element={<FocusSession />} />
-            <Route path="/player/:id" element={<Player />} />
-            <Route path="/artwork/:id" element={<ArtworkDetail />} />
-            <Route path="/blog" element={<BlogList />} />
-            <Route path="/blog/:id" element={<BlogDetail />} />
-            <Route path="/settings/:type" element={<SettingsPage />} />
-            <Route path="/about/:type" element={<AboutPage />} />
-            <Route path="/about" element={<AboutPage />} />
+            <Route path="/nickname-setup" element={<NicknameSetup />} />
+            <Route path="/home" element={<RequireAuth><Home /></RequireAuth>} />
+            <Route path="/library" element={<RequireAuth><Library /></RequireAuth>} />
+            <Route path="/mixer" element={<RequireAuth><Mixer /></RequireAuth>} />
+            <Route path="/gallery" element={<RequireAuth><Gallery /></RequireAuth>} />
+            <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+            <Route path="/focus/config" element={<RequireAuth><FocusConfig /></RequireAuth>} />
+            <Route path="/focus/session" element={<RequireAuth><FocusSession /></RequireAuth>} />
+            <Route path="/player/:id" element={<RequireAuth><Player /></RequireAuth>} />
+            <Route path="/artwork/:id" element={<RequireAuth><ArtworkDetail /></RequireAuth>} />
+            <Route path="/blog" element={<RequireAuth><BlogList /></RequireAuth>} />
+            <Route path="/blog/:id" element={<RequireAuth><BlogDetail /></RequireAuth>} />
+            <Route path="/settings/:type" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+            <Route path="/about/:type" element={<RequireAuth><AboutPage /></RequireAuth>} />
+            <Route path="/about" element={<RequireAuth><AboutPage /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </div>

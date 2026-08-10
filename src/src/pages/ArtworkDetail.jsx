@@ -113,8 +113,9 @@ export default function ArtworkDetail() {
   const { artworks, lang, t } = useApp()
   const [scale, setScale] = useState(1)
   const [pos, setPos] = useState({ x: 0, y: 0 })
-  const [showShare, setShowShare] = useState(false)
+  const [showShare, setShowShare] = useState(null)
   const [shareToast, setShareToast] = useState('')
+  const toastTimerRef = useRef(null)
   const pinchRef = useRef({ dist: 0, scale: 1 })
   const dragRef = useRef({ dragging: false, startX: 0, startY: 0, posX: 0, posY: 0, moved: false })
   const canvasRef = useRef(null)
@@ -271,8 +272,31 @@ export default function ArtworkDetail() {
   const dateStr = new Date(art.createdAt).toISOString().slice(0, 10).replace(/-/g, '.')
   const strokeColor = art.hue != null ? hslToRgba(art.hue, 0.35, 0.78, 0.85) : '#f1efe8'
 
-  const handleShareImage = async () => {
-    // 使用 canvas 生成带水印的图片
+  const showToast = (msg) => {
+    setShareToast(msg)
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => {
+      setShareToast('')
+      toastTimerRef.current = null
+    }, 2500)
+  }
+
+  const downloadImage = (canvas) => {
+    try {
+      const link = document.createElement('a')
+      link.download = `healing-${dateStr}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+      showToast(t('artwork.savedToDevice'))
+    } catch (e) {
+      console.warn('[share] download failed:', e)
+      showToast(t('artwork.saveFailed'))
+    }
+  }
+
+  const handleShareImage = async (mode) => {
+    // mode: 'imageOnly' | 'withQuote'
+    const withQuote = mode === 'withQuote'
     try {
       const canvas = document.createElement('canvas')
       canvas.width = 1080
@@ -284,8 +308,24 @@ export default function ArtworkDetail() {
       if (art.previewUrl) {
         const img = new Image()
         img.src = art.previewUrl
-        await new Promise((res) => { img.onload = res; img.onerror = res })
-        ctx.drawImage(img, 0, 0, 1080, 1080)
+        const loaded = await new Promise((resolve) => {
+          img.onload = () => resolve(true)
+          img.onerror = () => resolve(false)
+        })
+        if (!loaded) throw new Error('preview image load failed')
+        // 按 contain 比例绘制，避免非正方形预览图被拉伸变形
+        const iw = img.naturalWidth || img.width
+        const ih = img.naturalHeight || img.height
+        if (iw > 0 && ih > 0) {
+          const scale = Math.min(1080 / iw, 1080 / ih)
+          const dw = iw * scale
+          const dh = ih * scale
+          const dx = (1080 - dw) / 2
+          const dy = (1080 - dh) / 2
+          ctx.drawImage(img, dx, dy, dw, dh)
+        } else {
+          ctx.drawImage(img, 0, 0, 1080, 1080)
+        }
       } else {
         // 绘制 SVG 路径
         const path = makePath(art.id, art.curveType, art.params)
@@ -311,66 +351,81 @@ export default function ArtworkDetail() {
       ctx.textAlign = 'right'
       ctx.fillText('Healing', 1050, 1050)
 
-      if (showShare === 'withQuote' && art.quote) {
+      if (withQuote && art.quote) {
+        const quoteText = lang === 'zh' ? art.quote.cn : art.quote.en
         ctx.fillStyle = 'rgba(241, 239, 232, 0.8)'
-        ctx.font = 'italic 24px serif'
+        ctx.font = 'italic 28px serif'
         ctx.textAlign = 'center'
-        // 自动换行
-        const words = art.quote.en.split(' ')
+        // 自动换行：中文按字符、英文按空格分割
+        let tokens
+        if (lang === 'zh') {
+          tokens = quoteText.split('')
+        } else {
+          tokens = quoteText.split(' ')
+        }
+        // 先正向计算所有行
+        const lines = []
         let line = ''
-        let y = 1000
-        for (let i = words.length - 1; i >= 0; i--) {
-          const test = words[i] + ' ' + line
-          if (ctx.measureText(test).width > 900) {
-            ctx.fillText(line, 540, y)
-            line = words[i]
-            y -= 30
+        for (let i = 0; i < tokens.length; i++) {
+          const token = lang === 'zh' ? tokens[i] : (line ? ' ' + tokens[i] : tokens[i])
+          const test = line + token
+          if (ctx.measureText(test).width > 900 && line) {
+            lines.push(line)
+            line = lang === 'zh' ? tokens[i] : tokens[i]
           } else {
             line = test
           }
         }
-        ctx.fillText(line, 540, y)
+        if (line) lines.push(line)
+        // 从底部向上排列，但限制不超过顶部（留出水印空间）
+        const lineH = 36
+        const startY = 1020
+        const maxLines = Math.floor((startY - 120) / lineH)
+        const drawLines = lines.slice(-maxLines)
+        let y = startY
+        for (let i = drawLines.length - 1; i >= 0; i--) {
+          ctx.fillText(drawLines[i], 540, y)
+          y -= lineH
+        }
       }
 
       // 尝试系统分享
       canvas.toBlob(async (blob) => {
-        if (!blob) return
+        if (!blob) {
+          console.warn('[share] toBlob returned null')
+          showToast(t('artwork.shareFailed'))
+          return
+        }
         const file = new File([blob], 'healing-artwork.png', { type: 'image/png' })
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        let canShare = false
+        try {
+          canShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [file] }))
+        } catch (e) {
+          canShare = false
+        }
+        if (canShare) {
           try {
             await navigator.share({
               files: [file],
               title: t('artwork.myArtwork'),
               text: art.quote ? `"${lang === 'zh' ? art.quote.cn : art.quote.en}"` : ''
             })
-            setShareToast(t('artwork.shared'))
+            showToast(t('artwork.shared'))
           } catch (e) {
-            // 用户取消或失败，下载
+            // 用户主动取消（AbortError）不触发下载
+            if (e && e.name === 'AbortError') return
+            // 真正失败才下载
             downloadImage(canvas)
           }
         } else {
           downloadImage(canvas)
         }
-        setTimeout(() => setShareToast(''), 2000)
       })
     } catch (e) {
       console.warn('[share] failed:', e)
-      setShareToast(t('artwork.shareFailed'))
-      setTimeout(() => setShareToast(''), 2000)
+      showToast(t('artwork.shareFailed'))
     }
     setShowShare(null)
-  }
-
-  const downloadImage = (canvas) => {
-    try {
-      const link = document.createElement('a')
-      link.download = `healing-${dateStr}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-      setShareToast(t('artwork.savedToDevice'))
-    } catch (e) {
-      setShareToast(t('artwork.saveFailed'))
-    }
   }
 
   return (
@@ -449,8 +504,8 @@ export default function ArtworkDetail() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h4>{t('artwork.shareArtwork')}</h4>
             <div className="modal-actions" style={{ flexDirection: 'column', gap: 8 }}>
-              <button className="btn block" onClick={() => { setShowShare('imageOnly'); handleShareImage() }}>{t('artwork.shareArtworkOnly')}</button>
-              <button className="btn block" onClick={() => { setShowShare('withQuote'); setTimeout(handleShareImage, 50) }}>{t('artwork.shareWithQuote')}</button>
+              <button className="btn block" onClick={() => { setShowShare('imageOnly'); handleShareImage('imageOnly') }}>{t('artwork.shareArtworkOnly')}</button>
+              <button className="btn block" onClick={() => { setShowShare('withQuote'); handleShareImage('withQuote') }}>{t('artwork.shareWithQuote')}</button>
               <button className="btn ghost block" onClick={() => setShowShare(null)}>{t('common.cancel')}</button>
             </div>
           </div>

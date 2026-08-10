@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useApp, auth, bindings } from '../store.jsx'
+import { useApp, auth, bindings, validatePassword } from '../store.jsx'
 import { ChevronLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 
 /**
@@ -21,6 +21,8 @@ export default function SettingsPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+  const [deactivateInput, setDeactivateInput] = useState('')
+  const [deactivateError, setDeactivateError] = useState('')
 
   const email = user?.account || ''
   const [bindState, setBindState] = useState(() => email ? bindings.get(email) : { phone: null, google: null, apple: null })
@@ -35,7 +37,7 @@ export default function SettingsPage() {
   }
 
   const handleChangePassword = async () => {
-    if (!newPwd || !confirmPwd) {
+    if (!oldPwd || !newPwd || !confirmPwd) {
       flashToast(t('settings.fillAllFields'), 'error')
       return
     }
@@ -43,14 +45,20 @@ export default function SettingsPage() {
       flashToast(t('settings.passwordsNotMatch'), 'error')
       return
     }
-    if (newPwd.length < 6) {
+    if (!validatePassword(newPwd)) {
       flashToast(t('settings.passwordShort'), 'error')
       return
     }
     setLoading(true)
     await new Promise((r) => setTimeout(r, 500))
-    if (email) auth.changePassword({ email, newPassword: newPwd })
+    const res = email
+      ? auth.changePassword({ email, oldPassword: oldPwd, newPassword: newPwd, type: 'email' })
+      : { ok: true }
     setLoading(false)
+    if (!res.ok) {
+      flashToast(t('settings.currentPasswordIncorrect'), 'error')
+      return
+    }
     flashToast(t('settings.passwordChanged'), 'success')
     setOldPwd('')
     setNewPwd('')
@@ -221,7 +229,7 @@ export default function SettingsPage() {
             <button
               className="btn block"
               style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }}
-              onClick={() => setConfirmDeactivate(true)}
+              onClick={() => { setConfirmDeactivate(true); setDeactivateInput(''); setDeactivateError('') }}
             >
               {t('settings.deactivateBtn')}
             </button>
@@ -235,9 +243,35 @@ export default function SettingsPage() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h4>{t('settings.confirmDeactivation')}</h4>
             <p>{t('settings.confirmDeactivationDesc')}</p>
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>{t('settings.confirmDeactivateType')}</label>
+              <input
+                type="text"
+                value={deactivateInput}
+                onChange={(e) => { setDeactivateInput(e.target.value); setDeactivateError('') }}
+                placeholder={t('settings.confirmDeactivateMatch')}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && deactivateInput.trim() === t('settings.confirmDeactivateMatch')) handleDeactivate()
+                }}
+              />
+              {deactivateError && <span className="field-error">{deactivateError}</span>}
+            </div>
             <div className="modal-actions">
               <button className="btn ghost" onClick={() => setConfirmDeactivate(false)}>{t('common.cancel')}</button>
-              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={handleDeactivate}>{t('settings.deleteForever')}</button>
+              <button
+                className="btn"
+                style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }}
+                onClick={() => {
+                  if (deactivateInput.trim() === t('settings.confirmDeactivateMatch')) {
+                    handleDeactivate()
+                  } else {
+                    setDeactivateError(t('settings.confirmDeactivateMismatch'))
+                  }
+                }}
+              >
+                {t('settings.deleteForever')}
+              </button>
             </div>
           </div>
         </div>
@@ -296,6 +330,15 @@ export function AboutPage() {
       setToast(t('about.enterFeedback'))
       setTimeout(() => setToast(''), 2000)
       return
+    }
+    // 打开系统邮件客户端（预填收件地址和正文）
+    const subject = encodeURIComponent('Healing Feedback')
+    const body = encodeURIComponent(feedback.trim())
+    const mailtoLink = `mailto:support@healing.app?subject=${subject}&body=${body}`
+    try {
+      window.location.href = mailtoLink
+    } catch (e) {
+      // 降级：mailto 失败时仅提示
     }
     setToast(t('about.feedbackSent'))
     setFeedback('')

@@ -1138,6 +1138,17 @@ a {
   letter-spacing: 0.02em;
 }
 
+/* 安全问题展示（忘记密码页） */
+.recovery-question-display {
+  padding: 12px 14px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
 /* 表单整体错误 / 成功提示 */
 .form-error {
   background: rgba(184, 84, 80, 0.08);
@@ -1373,6 +1384,18 @@ a {
 .suminagashi-session.faded canvas {
   opacity: 0.4;
   filter: blur(2px);
+}
+
+/* 恢复动画：从 faded 状态切回正常时触发一个 2 秒的反向淡入
+   通过 .recovering 类提供额外的过渡曲线，让线条从半透明逐步回到完全清晰 */
+.suminagashi-session.recovering canvas {
+  animation: ink-recover 2s ease-out forwards;
+}
+
+@keyframes ink-recover {
+  0% { opacity: 0.4; filter: blur(2px); }
+  60% { opacity: 0.8; filter: blur(0.5px); }
+  100% { opacity: 1; filter: blur(0); }
 }
 
 /* ── 防分心倒计时浮层 ── */
@@ -3048,5 +3071,263 @@ a {
   font-size: 34px;
   line-height: 1.2;
   font-weight: 400;
+  margin-top: 8px;
+}
+
+/* ====== 邮箱/手机号 Tab 切换 ====== */
+.auth-tabs {
+  display: flex;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.auth-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.auth-tab.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.auth-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--ink);
+  border-radius: 1px;
+}
+
+/* ====== 手机号输入（区号 + 号码） ====== */
+.phone-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.country-code-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.phone-input-wrap input {
+  flex: 1;
+}
+
+/* 国家区号选择浮层 */
+.country-modal {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.country-search {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  margin: 8px 0 12px;
+  background: var(--bg-soft);
+  color: var(--ink);
+}
+
+.country-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.country-item {
+  padding: 12px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.country-item:hover {
+  background: var(--bg-soft);
+}
+
+.country-item.selected {
+  background: var(--bg-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ====== 第三方登录 ====== */
+.third-party-login {
+  margin-top: 24px;
+}
+
+.third-party-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.third-party-divider .line {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.third-party-divider .text {
+  font-size: 12px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.third-party-btns {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.third-party-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.tp-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  color: var(--ink);
+}
+
+.google-icon {
+  color: #4285F4;
+  border-color: transparent;
+  background: #fff;
+}
+
+.apple-icon {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
+.apple-icon::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z'/></svg>") center/contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z'/></svg>") center/contain no-repeat;
+}
+
+.wechat-icon {
+  background: #07c160;
+  color: #fff;
+  border-color: #07c160;
+}
+
+.tp-label {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* ====== 滑动删除行 ====== */
+.swipe-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipe-content {
+  position: relative;
+  z-index: 2;
+  background: var(--bg);
+  will-change: transform;
+}
+
+.swipe-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #9a4a4a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 1;
+}
+
+/* ====== 昵称设置页头像 ====== */
+.nickname-avatar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.nickname-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px dashed var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg-soft);
+  position: relative;
+}
+
+.nickname-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nickname-avatar-placeholder {
+  font-size: 36px;
+  color: var(--ink-muted);
+  font-family: var(--serif-en);
+}
+
+.nickname-avatar-hint {
+  font-size: 12px;
+  color: var(--ink-muted);
   margin-top: 8px;
 }

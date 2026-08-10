@@ -66,7 +66,7 @@ export default function Home() {
           <>
             <div className="section-title">
               <h3>{t('home.favorites')}</h3>
-              <span className="more" onClick={() => nav('/library')}>{t('common.more')} ›</span>
+              <span className="more" onClick={() => nav('/library', { state: { tab: 'fav' } })}>{t('common.more')} ›</span>
             </div>
             <div className="list">
               {favList.map((m) => (

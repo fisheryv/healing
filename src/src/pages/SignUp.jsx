@@ -1,64 +1,69 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useApp, auth, validateEmail } from '../store.jsx'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { useApp, auth, validateEmail, validatePhone, validatePassword } from '../store.jsx'
+import { Eye, EyeOff, Loader2, ChevronDown } from 'lucide-react'
+
+// 国家区号列表（精简版）
+const COUNTRY_CODES = [
+  { code: '+86', label: '中国大陆 +86' },
+  { code: '+1', label: '美国/加拿大 +1' },
+  { code: '+44', label: '英国 +44' },
+  { code: '+81', label: '日本 +81' },
+  { code: '+82', label: '韩国 +82' },
+  { code: '+65', label: '新加坡 +65' },
+  { code: '+60', label: '马来西亚 +60' },
+  { code: '+61', label: '澳大利亚 +61' },
+  { code: '+49', label: '德国 +49' },
+  { code: '+33', label: '法国 +33' },
+  { code: '+852', label: '香港 +852' },
+  { code: '+886', label: '台湾 +886' },
+]
 
 export default function SignUp() {
+  const [tab, setTab] = useState('email') // 'email' | 'phone'
   const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
+  const [phone, setPhone] = useState('')
+  const [countryCode, setCountryCode] = useState('+86')
+  const [showCountryList, setShowCountryList] = useState(false)
+  const [countrySearch, setCountrySearch] = useState('')
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
-  const [countdown, setCountdown] = useState(0)
+  const [recoveryQuestion, setRecoveryQuestion] = useState('')
+  const [recoveryAnswer, setRecoveryAnswer] = useState('')
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [codeSent, setCodeSent] = useState(false)
   const { setUser, t } = useApp()
   const nav = useNavigate()
-  const sentCodeRef = useRef('')
 
-  useEffect(() => {
-    if (countdown <= 0) return
-    const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [countdown])
-
-  const handleSendCode = () => {
-    if (!email) {
-      setErrors((p) => ({ ...p, email: t('signup.emailRequired') }))
-      return
-    }
-    if (!validateEmail(email)) {
-      setErrors((p) => ({ ...p, email: t('signup.emailInvalid') }))
-      return
-    }
-    if (auth.exists(email)) {
-      setErrors((p) => ({ ...p, email: t('signup.emailExists') }))
-      return
-    }
-    if (countdown > 0) return
-    const mockCode = String(Math.floor(100000 + Math.random() * 900000))
-    sentCodeRef.current = mockCode
-    setCodeSent(true)
-    setCountdown(60)
-    console.info('[demo] verification code:', mockCode)
-  }
+  const filteredCountries = COUNTRY_CODES.filter((c) =>
+    c.label.toLowerCase().includes(countrySearch.toLowerCase())
+  )
 
   const validate = () => {
     const errs = {}
-    if (!email) errs.email = t('signup.emailRequired')
-    else if (!validateEmail(email)) errs.email = t('signup.emailInvalid')
-    else if (auth.exists(email)) errs.email = t('signup.emailExists')
 
-    if (!code) errs.code = t('signup.codeRequired')
-    else if (codeSent && code !== sentCodeRef.current) errs.code = t('signup.codeIncorrect')
+    // 账号校验
+    if (tab === 'email') {
+      if (!email) errs.account = t('signup.emailRequired')
+      else if (!validateEmail(email)) errs.account = t('signup.emailInvalid')
+      else if (auth.exists(email, 'email')) errs.account = t('signup.emailExists')
+    } else {
+      if (!phone) errs.account = t('signup.phoneRequired')
+      else if (!validatePhone(phone)) errs.account = t('signup.phoneInvalid')
+      else if (auth.exists(`${countryCode}${phone}`, 'phone')) errs.account = t('signup.phoneExists')
+    }
 
     if (!nickname.trim()) errs.nickname = t('signup.nicknameRequired')
     else if (nickname.trim().length > 20) errs.nickname = t('signup.nicknameLong')
 
     if (!password) errs.password = t('signup.passwordRequired')
-    else if (password.length < 6) errs.password = t('signup.passwordShort')
+    else if (!validatePassword(password)) errs.password = t('signup.passwordShort')
+
+    // 安全问题校验
+    if (!recoveryQuestion.trim()) errs.recoveryQuestion = t('signup.questionRequired')
+    if (!recoveryAnswer.trim()) errs.recoveryAnswer = t('signup.answerRequired')
 
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -69,14 +74,23 @@ export default function SignUp() {
     if (!validate()) return
     setLoading(true)
     await new Promise((r) => setTimeout(r, 600))
-    const res = auth.register({ email, nickname: nickname.trim(), password })
+    const res = auth.register({
+      email: tab === 'email' ? email : '',
+      phone: tab === 'phone' ? `${countryCode}${phone}` : '',
+      nickname: nickname.trim(),
+      password,
+      type: tab,
+      recoveryQuestion: recoveryQuestion.trim(),
+      recoveryAnswer: recoveryAnswer.trim(),
+    })
     setLoading(false)
     if (!res.ok) {
       setFormError(res.error)
       return
     }
-    setUser({ nickname: res.user.nickname, account: res.user.email })
-    nav('/home', { replace: true })
+    // 跳转到昵称设置页（首次登录）
+    setUser({ nickname: res.user.nickname, account: res.user.account || res.user.email || res.user.phone })
+    nav('/nickname-setup', { replace: true, state: { justRegistered: true } })
   }
 
   const onKeyDown = (e) => {
@@ -91,42 +105,74 @@ export default function SignUp() {
       </div>
 
       <div className="login-body">
-        <div className="field">
-          <label>{t('signup.email')}</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: '' })); setFormError('') }}
-            placeholder={t('login.emailPlaceholder')}
-            autoComplete="email"
-          />
-          {errors.email && <span className="field-error">{errors.email}</span>}
+        {/* 邮箱/手机号 Tab */}
+        <div className="auth-tabs">
+          <div className={'auth-tab' + (tab === 'email' ? ' active' : '')} onClick={() => { setTab('email'); setErrors({}); setFormError('') }}>
+            {t('signup.tabEmail')}
+          </div>
+          <div className={'auth-tab' + (tab === 'phone' ? ' active' : '')} onClick={() => { setTab('phone'); setErrors({}); setFormError('') }}>
+            {t('signup.tabPhone')}
+          </div>
         </div>
 
         <div className="field">
-          <label>{t('signup.verifyCode')}</label>
-          <div className="field-code">
+          <label>{tab === 'email' ? t('signup.email') : t('signup.phone')}</label>
+          {tab === 'email' ? (
             <input
-              type="text"
-              value={code}
-              onChange={(e) => { setCode(e.target.value); setErrors((p) => ({ ...p, code: '' })); setFormError('') }}
-              placeholder={t('signup.codePlaceholder')}
-              maxLength={6}
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, account: '' })); setFormError('') }}
+              placeholder={t('login.emailPlaceholder')}
+              autoComplete="email"
             />
-            <button
-              className={`code-btn ${countdown > 0 ? 'disabled' : ''}`}
-              onClick={handleSendCode}
-              disabled={countdown > 0}
-              type="button"
-            >
-              {countdown > 0 ? `${countdown}s` : t('signup.send')}
-            </button>
-          </div>
-          {errors.code && <span className="field-error">{errors.code}</span>}
-          {codeSent && !errors.code && (
-            <span className="field-hint">{t('signup.demoCode')}{sentCodeRef.current}</span>
+          ) : (
+            <div className="phone-input-wrap">
+              <button
+                type="button"
+                className="country-code-btn"
+                onClick={() => setShowCountryList(true)}
+              >
+                {countryCode} <ChevronDown size={14} />
+              </button>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => { setPhone(e.target.value); setErrors((p) => ({ ...p, account: '' })); setFormError('') }}
+                placeholder={t('signup.phonePlaceholder')}
+                autoComplete="tel"
+              />
+            </div>
           )}
+          {errors.account && <span className="field-error">{errors.account}</span>}
         </div>
+
+        {/* 国家区号选择浮层 */}
+        {showCountryList && (
+          <div className="modal-mask" onClick={() => { setShowCountryList(false); setCountrySearch('') }}>
+            <div className="modal country-modal" onClick={(e) => e.stopPropagation()}>
+              <h4>{t('signup.countryCode')}</h4>
+              <input
+                className="country-search"
+                type="text"
+                value={countrySearch}
+                onChange={(e) => setCountrySearch(e.target.value)}
+                placeholder="搜索国家/地区"
+                autoFocus
+              />
+              <div className="country-list">
+                {filteredCountries.map((c) => (
+                  <div
+                    key={c.code}
+                    className={'country-item' + (countryCode === c.code ? ' selected' : '')}
+                    onClick={() => { setCountryCode(c.code); setShowCountryList(false); setCountrySearch('') }}
+                  >
+                    {c.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="field">
           <label>{t('signup.nickname')}</label>
@@ -163,6 +209,34 @@ export default function SignUp() {
             </button>
           </div>
           {errors.password && <span className="field-error">{errors.password}</span>}
+        </div>
+
+        {/* 安全问题：用于账号恢复和忘记密码 */}
+        <div className="field">
+          <label>{t('signup.recoveryQuestion')}</label>
+          <input
+            type="text"
+            value={recoveryQuestion}
+            onChange={(e) => { setRecoveryQuestion(e.target.value); setErrors((p) => ({ ...p, recoveryQuestion: '' })); setFormError('') }}
+            onKeyDown={onKeyDown}
+            placeholder={t('signup.questionPlaceholder')}
+            maxLength={60}
+          />
+          {errors.recoveryQuestion && <span className="field-error">{errors.recoveryQuestion}</span>}
+        </div>
+
+        <div className="field">
+          <label>{t('signup.recoveryAnswer')}</label>
+          <input
+            type="text"
+            value={recoveryAnswer}
+            onChange={(e) => { setRecoveryAnswer(e.target.value); setErrors((p) => ({ ...p, recoveryAnswer: '' })); setFormError('') }}
+            onKeyDown={onKeyDown}
+            placeholder={t('signup.answerPlaceholder')}
+            maxLength={40}
+          />
+          {errors.recoveryAnswer && <span className="field-error">{errors.recoveryAnswer}</span>}
+          <span className="field-hint">{t('signup.recoveryHint')}</span>
         </div>
 
         {formError && <div className="form-error">{formError}</div>}

@@ -78,6 +78,8 @@ export default function FocusSession() {
   const [distractCountdown, setDistractCountdown] = useState(DISTRACT_COUNTDOWN_START)
   // 是否已超时（永久半透明）
   const [permanentlyFaded, setPermanentlyFaded] = useState(false)
+  // 恢复中（触发 2 秒反向褪色动画）
+  const [recovering, setRecovering] = useState(false)
   // 用于绘制循环内读取的分心暂停标志（ref 避免重建帧循环）
   const distractedRef = useRef(false)
   // 分心开始时间戳
@@ -143,6 +145,9 @@ export default function FocusSession() {
         distractTimerRef.current = null
       }
       setDistractCountdown(DISTRACT_COUNTDOWN_START)
+      // 触发反向褪色恢复动画（2 秒）
+      setRecovering(true)
+      setTimeout(() => setRecovering(false), 2000)
     }
     // permanentlyFaded 后即使放回也不再恢复清晰度
   }, [screenDown, phase, settings.screenDown, permanentlyFaded])
@@ -165,6 +170,29 @@ export default function FocusSession() {
       stopGuardRef.current = null
       stopAll()
     }, 3000)
+    // PRD: 设备产生短促双震动提示 + 轻柔完成提示音
+    try {
+      if ('vibrate' in navigator) navigator.vibrate([60, 80, 60])
+    } catch (e) { /* noop */ }
+    // 轻柔完成提示音（短促的 sine 衰减）
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      if (AudioCtx) {
+        const ctx = new AudioCtx()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(880, ctx.currentTime)
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.6)
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.05)
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start()
+        osc.stop(ctx.currentTime + 1.3)
+      }
+    } catch (e) { /* noop */ }
     setPhase('reward')
   }, [recentQuotes, recordQuote, setCurrentMix])
 
@@ -343,6 +371,22 @@ export default function FocusSession() {
       }
     }
 
+    // ── 兜底定时器：切后台时 requestAnimationFrame 会被浏览器暂停，
+    //    导致 frame 循环里的进度判断无法触发。用 setInterval + 墙钟
+    //    确保会话能按时结束（即使被限流，切回前台时也会立即触发）。
+    const finishGuard = setInterval(() => {
+      const wallElapsed = (Date.now() - startTimeRef.current) / 1000
+      if (wallElapsed >= durationSec) {
+        clearInterval(finishGuard)
+        try {
+          finishSession(engineRef.current)
+        } catch (e) {
+          console.error('[FocusSession] finishGuard failed:', e)
+          setPhase('reward')
+        }
+      }
+    }, 250)
+
     rafRef.current = requestAnimationFrame(frame)
 
     const onResize = () => engine.resize()
@@ -350,6 +394,7 @@ export default function FocusSession() {
 
     return () => {
       cancelAnimationFrame(rafRef.current)
+      clearInterval(finishGuard)
       window.removeEventListener('resize', onResize)
       stopAnalysis()
       engine.dispose()
@@ -399,10 +444,11 @@ export default function FocusSession() {
   if (phase === 'drawing') {
     // 防分心褪色状态：分心时褪色，超时后维持半透明
     const fadeClass = (distracted || permanentlyFaded) ? ' faded' : ''
+    const recoverClass = recovering ? ' recovering' : ''
     const showDistractOverlay = distracted && !permanentlyFaded
 
     return (
-      <div className={'focus-session suminagashi-session' + fadeClass}>
+      <div className={'focus-session suminagashi-session' + fadeClass + recoverClass}>
         <canvas ref={canvasRef} />
         <button className="focus-abandon" onClick={() => setShowAbandonConfirm(true)}>{t('focusSession.abandonBtn')}</button>
         {mix?.binaural && (
