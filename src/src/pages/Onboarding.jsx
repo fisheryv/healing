@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../store.jsx'
 
 export default function Onboarding() {
   const nav = useNavigate()
-  const { markOnboardingSeen } = useApp()
+  const { markOnboardingSeen, t } = useApp()
   const [current, setCurrent] = useState(0)
   const touchStartX = useRef(0)
   const touchDelta = useRef(0)
@@ -55,8 +55,8 @@ export default function Onboarding() {
             <img src="assets/onboarding01.png" alt="" />
           </div>
           <div className={`slide-1-text ${current === 0 ? 'active' : ''}`}>
-            <h1 className="onboarding-title">Music is the art of time.</h1>
-            <p className="onboarding-subtitle">Here, time is not a count to race against, but an art that grows in stillness.</p>
+            <h1 className="onboarding-title">{t('onboarding.title1')}</h1>
+            <p className="onboarding-subtitle">{t('onboarding.sub1')}</p>
           </div>
         </div>
 
@@ -66,8 +66,8 @@ export default function Onboarding() {
             <img src="assets/onboarding02.png" alt="" />
           </div>
           <div className={`slide-2-text ${current === 1 ? 'active' : ''}`}>
-            <h1 className="onboarding-title">Mix your inner peace.</h1>
-            <p className="onboarding-subtitle">Slide your fingertips — let music block out the noise around you.</p>
+            <h1 className="onboarding-title">{t('onboarding.title2')}</h1>
+            <p className="onboarding-subtitle">{t('onboarding.sub2')}</p>
           </div>
         </div>
 
@@ -76,14 +76,14 @@ export default function Onboarding() {
           <div className="slide-3-content">
             <div className={`slide-3-top ${current === 2 ? 'active' : ''}`}>
               <img className="onboarding-logo" src="assets/logo2.png" alt="" />
-              <div className="onboarding-app-name">Healing</div>
+              <div className="onboarding-app-name">{t('onboarding.appName')}</div>
             </div>
             <div className="slide-3-image">
               <img src="assets/onboarding03.png" alt="" />
             </div>
             <div className={`slide-3-bottom ${current === 2 ? 'active' : ''}`}>
-              <p className="onboarding-subtitle" style={{ textAlign: 'center' }}>Start a mindful journey of art and spirit.</p>
-              <button className="btn onboarding-start-btn" onClick={handleStart}>Start</button>
+              <p className="onboarding-subtitle" style={{ textAlign: 'center' }}>{t('onboarding.sub3')}</p>
+              <button className="btn onboarding-start-btn" onClick={handleStart}>{t('onboarding.startBtn')}</button>
             </div>
           </div>
         </div>

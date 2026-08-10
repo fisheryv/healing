@@ -4,11 +4,18 @@ import { Play, Pause, SkipBack, SkipForward, ListMusic, VolumeX, Heart, Blend, T
 import { officialMusic } from '../data.js'
 import { useApp } from '../store.jsx'
 
+function localized(field, lang) {
+  if (field && typeof field === 'object' && (field.zh || field.en)) {
+    return field[lang] || field.en
+  }
+  return field
+}
+
 export default function Player() {
   const { id } = useParams()
   const nav = useNavigate()
   const audioRef = useRef(null)
-  const { favorites, toggleFavorite, setCurrentMix, currentMix } = useApp()
+  const { favorites, toggleFavorite, setCurrentMix, currentMix, lang, t } = useApp()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -235,11 +242,11 @@ export default function Player() {
 
       <div className="player-cover">
         <div className="player-cover-inner">
-          <img src={song.cover} alt={song.name} />
+          <img src={song.cover} alt={localized(song.name, lang)} />
         </div>
         <div className="player-info">
-          <h1 className="player-title">{song.name}</h1>
-          <p className="player-type">{song.tag} Music</p>
+          <h1 className="player-title">{localized(song.name, lang)}</h1>
+          <p className="player-type">{localized(song.tag, lang)} {t('player.music')}</p>
         </div>
       </div>
 
@@ -250,7 +257,7 @@ export default function Player() {
           // 只替换 main music，保留 currentMix 中已有的 noise/ambient/binaural（若有）。
           const prev = currentMix || {}
           setCurrentMix({
-            name: prev.name || song.name,
+            name: prev.name || localized(song.name, lang),
             mainMusicId: song.id,
             mainMusicTitle: song.name,
             mainVolume: prev.mainVolume != null ? prev.mainVolume : 0.7,
@@ -263,12 +270,12 @@ export default function Player() {
           nav('/mixer')
         }}>
           <Blend size={16} strokeWidth={1.5} />
-          Mix Space
+          {t('home.mixSpace')}
         </button>
         <button className="action-btn-fill" onClick={() => {
           pauseNativeAudio()
           nav('/focus/config', { state: { mix: {
-            name: song.name,
+            name: localized(song.name, lang),
             mainMusicId: song.id,
             mainMusicTitle: song.name,
             mainVolume: 0.7,
@@ -280,7 +287,7 @@ export default function Player() {
           } } })
         }}>
           <Target size={16} strokeWidth={1.5} />
-          Begin Focus
+          {t('focusConfig.beginFocus')}
         </button>
       </div>
 
@@ -306,7 +313,7 @@ export default function Player() {
           className={'control-btn mode-' + playMode}
           onClick={cyclePlayMode}
           aria-label={`Play mode: ${playMode}`}
-          title={playMode === 'order' ? 'Order' : playMode === 'repeat' ? 'Repeat One' : 'Shuffle'}
+          title={playMode === 'order' ? t('player.order') : playMode === 'repeat' ? t('player.repeatOne') : t('player.shuffle')}
         >
           {playMode === 'order' && <Repeat size={22} strokeWidth={1.5} />}
           {playMode === 'repeat' && <Repeat1 size={22} strokeWidth={1.5} />}
@@ -343,7 +350,7 @@ export default function Player() {
 
       <div className="player-hint">
         <img className="airpod airpod-left" src="assets/airpod.png" alt="" />
-        <span>Best with Headphones</span>
+        <span>{t('focusConfig.bestWithHeadphones')}</span>
         <img className="airpod airpod-right" src="assets/airpod.png" alt="" />
       </div>
 
@@ -352,7 +359,7 @@ export default function Player() {
           <div className="play-icon-circle">
             <Play size={40} strokeWidth={1.5} />
           </div>
-          <span>Tap to Play</span>
+          <span>{t('player.tapToPlay')}</span>
         </div>
       )}
 
@@ -382,7 +389,7 @@ export default function Player() {
       {showPlaylist && (
         <div className="sheet-mask" onClick={() => setShowPlaylist(false)}>
           <div className="sheet playlist-sheet" onClick={(e) => e.stopPropagation()}>
-            <h4>Up Next</h4>
+            <h4>{t('player.upNext')}</h4>
             {playList.map((m, i) => (
               <div
                 key={m.id}
@@ -390,8 +397,8 @@ export default function Player() {
                 onClick={() => handleSelectSong(m.id)}
               >
                 <div className="left">
-                  <div>{m.name}</div>
-                  <div className="desc">{m.tag} Music · {m.duration}</div>
+                  <div>{localized(m.name, lang)}</div>
+                  <div className="desc">{localized(m.tag, lang)} {t('player.music')} · {m.duration}</div>
                 </div>
                 {m.id === song.id && <span className="now-playing-dot" />}
               </div>

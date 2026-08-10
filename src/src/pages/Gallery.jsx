@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../store.jsx'
 
 export default function Gallery() {
-  const { artworks, deleteArtwork } = useApp()
+  const { artworks, deleteArtwork, t } = useApp()
   const nav = useNavigate()
   const loc = useLocation()
   const [filter, setFilter] = useState('all')
@@ -92,19 +92,24 @@ export default function Gallery() {
   return (
     <div>
       <div className="page-pad" style={{ paddingBottom: 0 }}>
-        <h1 className="page-title cn">Gallery</h1>
+        <h1 className="page-title cn">{t('gallery.title')}</h1>
       </div>
 
       <div className="tab-bar">
-        <div className={'tab-item' + (filter === 'all' ? ' active' : '')} onClick={() => setFilter('all')}>All</div>
-        <div className={'tab-item' + (filter === 'complete' ? ' active' : '')} onClick={() => setFilter('complete')}>Complete</div>
-        <div className={'tab-item' + (filter === 'partial' ? ' active' : '')} onClick={() => setFilter('partial')}>Incomplete</div>
+        <div className={'tab-item' + (filter === 'all' ? ' active' : '')} onClick={() => setFilter('all')}>{t('gallery.tabAll')}</div>
+        <div className={'tab-item' + (filter === 'complete' ? ' active' : '')} onClick={() => setFilter('complete')}>{t('gallery.tabComplete')}</div>
+        <div className={'tab-item' + (filter === 'partial' ? ' active' : '')} onClick={() => setFilter('partial')}>{t('gallery.tabPartial')}</div>
       </div>
 
       {filtered.length === 0 ? (
         <div className="empty">
           <div className="icon" />
-          <p>Begin your first focus<br/>Generate your first artwork</p>
+          <p>{t('gallery.empty').split('\n').map((line, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <br />}
+              {line}
+            </React.Fragment>
+          ))}</p>
         </div>
       ) : (
         <div className="gallery-grid">
@@ -129,11 +134,11 @@ export default function Gallery() {
               )}
               {a.status !== 'complete' && (
                 <div className="partial-tag">
-                  Fragment · {a.interruptReason === 'distracted' ? 'Distracted' : 'Abandoned'} at {a.elapsedMin || 1}min
+                  {t('gallery.fragment')} · {a.interruptReason === 'distracted' ? t('gallery.distracted') : t('gallery.abandoned')} {t('gallery.at')} {a.elapsedMin || 1}{t('artwork.min')}
                 </div>
               )}
               <div className="footer">
-                {new Date(a.createdAt).toISOString().slice(0, 10).replace(/-/g, '.')} · {a.duration} min
+                {new Date(a.createdAt).toISOString().slice(0, 10).replace(/-/g, '.')} · {a.duration} {t('artwork.min')}
               </div>
             </div>
           ))}
@@ -144,12 +149,12 @@ export default function Gallery() {
       {actionMenu && (
         <div className="modal-mask" onClick={() => setActionMenu(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>{actionMenu.art.status === 'complete' ? 'Artwork' : 'Incomplete Artwork'}</h4>
-            <p>{new Date(actionMenu.art.createdAt).toISOString().slice(0, 10).replace(/-/g, '.')} · {actionMenu.art.duration} min</p>
+            <h4>{actionMenu.art.status === 'complete' ? t('gallery.artwork') : t('gallery.incompleteArtwork')}</h4>
+            <p>{new Date(actionMenu.art.createdAt).toISOString().slice(0, 10).replace(/-/g, '.')} · {actionMenu.art.duration} {t('artwork.min')}</p>
             <div className="modal-actions" style={{ flexDirection: 'column', gap: 8 }}>
-              <button className="btn block" onClick={handleViewDetail}>View Detail</button>
-              <button className="btn ghost block" style={{ color: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={handleDelete}>Delete</button>
-              <button className="btn ghost block" onClick={() => setActionMenu(null)}>Cancel</button>
+              <button className="btn block" onClick={handleViewDetail}>{t('gallery.viewDetail')}</button>
+              <button className="btn ghost block" style={{ color: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={handleDelete}>{t('common.delete')}</button>
+              <button className="btn ghost block" onClick={() => setActionMenu(null)}>{t('common.cancel')}</button>
             </div>
           </div>
         </div>
@@ -159,11 +164,11 @@ export default function Gallery() {
       {deleteTarget && (
         <div className="modal-mask" onClick={() => setDeleteTarget(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>Delete Artwork</h4>
-            <p>Are you sure you want to delete this artwork? This action cannot be undone.</p>
+            <h4>{t('gallery.deleteArtwork')}</h4>
+            <p>{t('gallery.deleteConfirm')}</p>
             <div className="modal-actions">
-              <button className="btn ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
-              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={confirmDelete}>Delete</button>
+              <button className="btn ghost" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</button>
+              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={confirmDelete}>{t('common.delete')}</button>
             </div>
           </div>
         </div>

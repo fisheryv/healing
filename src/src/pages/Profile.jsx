@@ -126,7 +126,7 @@ function calcStreaks(records) {
 }
 
 export default function Profile() {
-  const { user, setUser, artworks, settings, setSettings } = useApp()
+  const { user, setUser, artworks, settings, setSettings, lang, setLang, t } = useApp()
   const nav = useNavigate()
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -330,16 +330,16 @@ export default function Profile() {
               <button className="btn" style={{ height: 28, padding: '0 12px', fontSize: 11 }} onClick={saveName}>✓</button>
             </div>
           ) : (
-            <div className="name editable" onClick={startEditName}>{user?.nickname || 'Friend'}</div>
+            <div className="name editable" onClick={startEditName}>{user?.nickname || t('common.friend')}</div>
           )}
-          <div className="id">{user?.account || 'guest'}</div>
+          <div className="id">{user?.account || t('common.guest')}</div>
         </div>
       </div>
 
       <div className="heatmap">
         <div className="section-title" style={{ margin: 0 }}>
-          <h3>Activity</h3>
-          <span className="more">{streak} day streak</span>
+          <h3>{t('profile.activity')}</h3>
+          <span className="more">{streak} {t('profile.dayStreak')}</span>
         </div>
         <div
           className="heatmap-scroll"
@@ -368,11 +368,11 @@ export default function Profile() {
               {/* 星期缩写 */}
               <div className="heatmap-weekdays">
                 <div className="heatmap-weekday"></div>
-                <div className="heatmap-weekday">Mon</div>
+                <div className="heatmap-weekday">{lang === 'zh' ? '一' : 'Mon'}</div>
                 <div className="heatmap-weekday"></div>
-                <div className="heatmap-weekday">Wed</div>
+                <div className="heatmap-weekday">{lang === 'zh' ? '三' : 'Wed'}</div>
                 <div className="heatmap-weekday"></div>
-                <div className="heatmap-weekday">Fri</div>
+                <div className="heatmap-weekday">{lang === 'zh' ? '五' : 'Fri'}</div>
                 <div className="heatmap-weekday"></div>
               </div>
               {/* 热力图网格 */}
@@ -407,63 +407,76 @@ export default function Profile() {
         {hoveredCell && (
           <div className="heatmap-bubble" onClick={() => setHoveredCell(null)}>
             <div className="bubble-content">
-              <div className="bubble-date">{hoveredCell.displayDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
-              <div className="bubble-count">{hoveredCell.count} session{hoveredCell.count !== 1 ? 's' : ''}</div>
+              <div className="bubble-date">{hoveredCell.displayDate.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
+              <div className="bubble-count">{hoveredCell.count} {t('profile.sessionsUnit')}{hoveredCell.count !== 1 ? '' : ''}</div>
             </div>
           </div>
         )}
       </div>
 
       <div className="stats">
-        <Stat num={formatDuration(totalSec)} label="Total Focus" />
-        <Stat num={totalComplete} label="Sessions" />
-        <Stat num={streak} label="Streak" />
-        <Stat num={longest} label="Longest Streak" />
+        <Stat num={formatDuration(totalSec)} label={t('profile.totalFocus')} />
+        <Stat num={totalComplete} label={t('profile.sessions')} />
+        <Stat num={streak} label={t('profile.streak')} />
+        <Stat num={longest} label={t('profile.longestStreak')} />
       </div>
 
-      <div className="settings-group">Focus</div>
+      <div className="settings-group">{t('profile.focusSettings')}</div>
       <div className="settings-list">
         <div className="settings-row">
-          <span>Force Screen Downward</span>
+          <span>{t('profile.screenDown')}</span>
           <div className={'switch' + (settings.screenDown ? ' on' : '')} onClick={() => toggle('screenDown')} />
         </div>
         <div className="settings-row">
-          <span>Do Not Disturb</span>
+          <span>{t('profile.doNotDisturb')}</span>
           <div className={'switch' + (settings.dnd ? ' on' : '')} onClick={() => toggle('dnd')} />
         </div>
         <div className="settings-row">
-          <span>Focus Completion Notice</span>
+          <span>{t('profile.completionNotice')}</span>
           <div className={'switch' + (settings.completeNotice ? ' on' : '')} onClick={() => toggle('completeNotice')} />
         </div>
       </div>
 
-      <div className="settings-group">Account & Security</div>
+      <div className="settings-group">{t('profile.accountSecurity')}</div>
       <div className="settings-list">
         <div className="settings-row" onClick={() => nav('/settings/password')} style={{ cursor: 'pointer' }}>
-          <span>Change Password</span><span className="arrow">›</span>
+          <span>{t('profile.changePassword')}</span><span className="arrow">›</span>
         </div>
         <div className="settings-row" onClick={() => nav('/settings/binding')} style={{ cursor: 'pointer' }}>
-          <span>Linked Accounts</span><span className="arrow">›</span>
+          <span>{t('profile.linkedAccounts')}</span><span className="arrow">›</span>
         </div>
         <div className="settings-row" onClick={() => nav('/settings/deactivate')} style={{ cursor: 'pointer' }}>
-          <span style={{ color: '#9a4a4a' }}>Deactivate Account</span><span className="arrow">›</span>
+          <span style={{ color: '#9a4a4a' }}>{t('profile.deactivate')}</span><span className="arrow">›</span>
         </div>
       </div>
 
-      <div className="settings-group">About</div>
+      <div className="settings-group">{t('profile.about')}</div>
       <div className="settings-list">
-        <div className="settings-row"><span>Current Version</span><span className="arrow">v0.1.0</span></div>
+        <div className="settings-row">
+          <span>{t('profile.language')}</span>
+          <div className="lang-selector">
+            <button
+              className={'lang-btn' + (lang === 'en' ? ' active' : '')}
+              onClick={() => setLang('en')}
+            >English</button>
+            <button
+              className={'lang-btn' + (lang === 'zh' ? ' active' : '')}
+              onClick={() => setLang('zh')}
+            >中文</button>
+          </div>
+        </div>
+        <div className="settings-row"><span>{t('profile.version')}</span><span className="arrow">v0.1.0</span></div>
         <div className="settings-row" onClick={() => nav('/about/terms')} style={{ cursor: 'pointer' }}>
-          <span>Terms of Service</span><span className="arrow">›</span>
+          <span>{t('profile.terms')}</span><span className="arrow">›</span>
         </div>
         <div className="settings-row" onClick={() => nav('/about/privacy')} style={{ cursor: 'pointer' }}>
-          <span>Privacy Policy</span><span className="arrow">›</span>
+          <span>{t('profile.privacy')}</span><span className="arrow">›</span>
         </div>
         <div className="settings-row" onClick={() => nav('/about/feedback')} style={{ cursor: 'pointer' }}>
-          <span>Feedback</span><span className="arrow">›</span>
+          <span>{t('profile.feedback')}</span><span className="arrow">›</span>
         </div>
         <div className="settings-row" onClick={logout} style={{ color: '#9a4a4a', justifyContent: 'center', cursor: 'pointer' }}>
-          <span>Logout</span>
+          <span>{t('profile.logout')}</span>
         </div>
       </div>
 
@@ -471,11 +484,11 @@ export default function Profile() {
       {showLogoutConfirm && (
         <div className="modal-mask" onClick={() => setShowLogoutConfirm(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>Logout</h4>
-            <p>Are you sure you want to log out? Your focus data will be kept on this device.</p>
+            <h4>{t('profile.logoutTitle')}</h4>
+            <p>{t('profile.logoutConfirm')}</p>
             <div className="modal-actions">
-              <button className="btn ghost" onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
-              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={confirmLogout}>Logout</button>
+              <button className="btn ghost" onClick={() => setShowLogoutConfirm(false)}>{t('common.cancel')}</button>
+              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={confirmLogout}>{t('profile.logout')}</button>
             </div>
           </div>
         </div>

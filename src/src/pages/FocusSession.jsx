@@ -52,7 +52,7 @@ function inkColorAt(phase) {
 export default function FocusSession() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { recentQuotes, recordQuote, addArtwork, setCurrentMix, settings } = useApp()
+  const { recentQuotes, recordQuote, addArtwork, setCurrentMix, settings, lang, t } = useApp()
 
   // 从 FocusConfig 传入的导航 state
   const { duration = 25, mix = null } = location.state || {}
@@ -176,9 +176,9 @@ export default function FocusSession() {
     const url = engine ? engine.captureDataURL() : null
     const elapsedSec = Math.round((Date.now() - startTimeRef.current) / 1000)
     const elapsedMin = Math.max(1, elapsedSec)
-    const reasonLabel = interruptReason === 'distracted' ? 'Distracted' : 'Abandoned'
+    const reasonLabel = interruptReason === 'distracted' ? t('focusSession.fragmentDistracted') : t('focusSession.fragmentAbandoned')
     addArtwork({
-      title: `Fragment · ${reasonLabel} at ${elapsedMin}min`,
+      title: `${reasonLabel} ${t('focusSession.atMin')} ${elapsedMin}`,
       curveType: 'Suminagashi',
       previewUrl: url,
       status: 'abandoned',
@@ -190,7 +190,7 @@ export default function FocusSession() {
     })
     setCurrentMix(null)
     return url
-  }, [addArtwork, mix, setCurrentMix])
+  }, [addArtwork, mix, setCurrentMix, t])
 
   // ── 长时间未放下手机 → 自动保存残卷并退出 ──
   // permanentlyFaded 由倒计时归零触发；此处只处理一次残卷保存与跳转
@@ -369,7 +369,7 @@ export default function FocusSession() {
   // 保存完成的作品
   const handleSave = useCallback(() => {
     addArtwork({
-      title: `Ink Flow · ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+      title: `${t('focusSession.inkFlow')} · ${new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })}`,
       curveType: 'Suminagashi',
       previewUrl,
       status: 'complete',
@@ -382,7 +382,7 @@ export default function FocusSession() {
     setCurrentMix(null)
     stopAll()
     navigate('/gallery')
-  }, [addArtwork, previewUrl, duration, mix, setCurrentMix, quote])
+  }, [addArtwork, previewUrl, duration, mix, setCurrentMix, quote, lang, t])
 
   // 倒计时阶段
   if (phase === 'countdown') {
@@ -404,29 +404,29 @@ export default function FocusSession() {
     return (
       <div className={'focus-session suminagashi-session' + fadeClass}>
         <canvas ref={canvasRef} />
-        <button className="focus-abandon" onClick={() => setShowAbandonConfirm(true)}>ABANDON</button>
+        <button className="focus-abandon" onClick={() => setShowAbandonConfirm(true)}>{t('focusSession.abandonBtn')}</button>
         {mix?.binaural && (
-          <div className="focus-headphone">Best with Headphones</div>
+          <div className="focus-headphone">{t('focusSession.bestWithHeadphones')}</div>
         )}
         {showDistractOverlay && (
           <div className="distract-overlay">
-            <div className="distract-hint">放下手机</div>
+            <div className="distract-hint">{t('focusSession.putDownPhone')}</div>
             <div className="distract-countdown">{distractCountdown}s</div>
           </div>
         )}
         {permanentlyFaded && (
           <div className="distract-overlay permanent">
-            <div className="distract-hint">专注已中断</div>
+            <div className="distract-hint">{t('focusSession.focusInterrupted')}</div>
           </div>
         )}
         {showAbandonConfirm && (
           <div className="modal-mask" onClick={() => setShowAbandonConfirm(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h4>Abandon Focus Session</h4>
-              <p>Are you sure you want to abandon this focus session?</p>
+              <h4>{t('focusSession.abandonTitle')}</h4>
+              <p>{t('focusSession.abandonConfirm')}</p>
               <div className="modal-actions">
-                <button className="btn ghost" onClick={() => setShowAbandonConfirm(false)}>Continue Focus</button>
-                <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={handleAbandon}>Abandon</button>
+                <button className="btn ghost" onClick={() => setShowAbandonConfirm(false)}>{t('focusSession.continueFocus')}</button>
+                <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={handleAbandon}>{t('focusSession.abandon')}</button>
               </div>
             </div>
           </div>
@@ -445,12 +445,12 @@ export default function FocusSession() {
         </div>
         {quote && (
           <div className="quote visible">
-            <div className="en">"{quote.en}"</div>
-            <div className="cn">{quote.cn}</div>
+            <div className={lang === 'zh' ? 'cn' : 'en'}>"{lang === 'zh' ? quote.cn : quote.en}"</div>
+            <div className={lang === 'zh' ? 'en' : 'cn'} style={{ opacity: 0.6 }}>{lang === 'zh' ? quote.en : quote.cn}</div>
           </div>
         )}
         <div className="reward-actions">
-          <button className="btn reward-save-btn" onClick={handleSave}>Save</button>
+          <button className="btn reward-save-btn" onClick={handleSave}>{t('focusSession.save')}</button>
         </div>
       </div>
     )

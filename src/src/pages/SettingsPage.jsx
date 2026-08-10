@@ -10,7 +10,7 @@ import { ChevronLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 export default function SettingsPage() {
   const { type } = useParams()
   const nav = useNavigate()
-  const { user, setUser } = useApp()
+  const { user, setUser, t } = useApp()
   const [oldPwd, setOldPwd] = useState('')
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
@@ -28,30 +28,30 @@ export default function SettingsPage() {
   const [bindValue, setBindValue] = useState('')
   const [bindError, setBindError] = useState('')
 
-  const flashToast = (msg, t = 'info') => {
+  const flashToast = (msg, ty = 'info') => {
     setToast(msg)
-    setToastType(t)
+    setToastType(ty)
     setTimeout(() => setToast(''), 2200)
   }
 
   const handleChangePassword = async () => {
     if (!newPwd || !confirmPwd) {
-      flashToast('Please fill in all fields', 'error')
+      flashToast(t('settings.fillAllFields'), 'error')
       return
     }
     if (newPwd !== confirmPwd) {
-      flashToast('Passwords do not match', 'error')
+      flashToast(t('settings.passwordsNotMatch'), 'error')
       return
     }
     if (newPwd.length < 6) {
-      flashToast('Password must be at least 6 characters', 'error')
+      flashToast(t('settings.passwordShort'), 'error')
       return
     }
     setLoading(true)
     await new Promise((r) => setTimeout(r, 500))
     if (email) auth.changePassword({ email, newPassword: newPwd })
     setLoading(false)
-    flashToast('Password changed ✓', 'success')
+    flashToast(t('settings.passwordChanged'), 'success')
     setOldPwd('')
     setNewPwd('')
     setConfirmPwd('')
@@ -76,16 +76,16 @@ export default function SettingsPage() {
     if (!bindChannel) return
     const val = bindValue.trim()
     if (!val) {
-      setBindError('Please enter a value')
+      setBindError(t('settings.enterValue'))
       return
     }
     if (bindChannel === 'phone' && !/^\+?[\d\s-]{6,}$/.test(val)) {
-      setBindError('Please enter a valid phone number')
+      setBindError(t('settings.invalidPhone'))
       return
     }
     bindings.bind(email, bindChannel, val)
     setBindState(bindings.get(email))
-    flashToast(`${bindChannel} linked ✓`, 'success')
+    flashToast(`${bindChannel} ${t('settings.linkedSuccess')}`, 'success')
     setBindChannel(null)
     setBindValue('')
     setBindError('')
@@ -94,20 +94,20 @@ export default function SettingsPage() {
   const handleUnbind = (channel) => {
     bindings.unbind(email, channel)
     setBindState(bindings.get(email))
-    flashToast(`${channel} unlinked`, 'info')
+    flashToast(`${channel} ${t('settings.unlinked')}`, 'info')
   }
 
   const titles = {
-    password: 'Change Password',
-    binding: 'Linked Accounts',
-    deactivate: 'Deactivate Account'
+    password: t('settings.changePassword'),
+    binding: t('settings.linkedAccounts'),
+    deactivate: t('settings.deactivate')
   }
 
   return (
     <div className="settings-page">
       <div className="settings-page-header">
         <button className="back-btn" onClick={() => nav('/profile')}><ChevronLeft size={24} strokeWidth={1.5} /></button>
-        <h2>{titles[type] || 'Settings'}</h2>
+        <h2>{titles[type] || t('settings.settingsTitle')}</h2>
         <div style={{ width: 24 }} />
       </div>
 
@@ -115,13 +115,13 @@ export default function SettingsPage() {
         {type === 'password' && (
           <>
             <div className="field">
-              <label>Current Password</label>
+              <label>{t('settings.currentPassword')}</label>
               <div className="field-pwd">
                 <input
                   type={showOld ? 'text' : 'password'}
                   value={oldPwd}
                   onChange={(e) => setOldPwd(e.target.value)}
-                  placeholder="Enter current password (optional)"
+                  placeholder={t('settings.currentPasswordPlaceholder')}
                   autoComplete="current-password"
                 />
                 <button type="button" className="pwd-toggle" onClick={() => setShowOld((v) => !v)} tabIndex={-1}>
@@ -130,13 +130,13 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="field">
-              <label>New Password</label>
+              <label>{t('settings.newPassword')}</label>
               <div className="field-pwd">
                 <input
                   type={showNew ? 'text' : 'password'}
                   value={newPwd}
                   onChange={(e) => setNewPwd(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder={t('settings.newPasswordPlaceholder')}
                   autoComplete="new-password"
                 />
                 <button type="button" className="pwd-toggle" onClick={() => setShowNew((v) => !v)} tabIndex={-1}>
@@ -145,13 +145,13 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="field">
-              <label>Confirm New Password</label>
+              <label>{t('settings.confirmPassword')}</label>
               <div className="field-pwd">
                 <input
                   type={showConfirm ? 'text' : 'password'}
                   value={confirmPwd}
                   onChange={(e) => setConfirmPwd(e.target.value)}
-                  placeholder="Re-enter new password"
+                  placeholder={t('settings.confirmPlaceholder')}
                   autoComplete="new-password"
                 />
                 <button type="button" className="pwd-toggle" onClick={() => setShowConfirm((v) => !v)} tabIndex={-1}>
@@ -160,7 +160,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <button className="btn block" style={{ marginTop: 24 }} onClick={handleChangePassword} disabled={loading}>
-              {loading ? <><Loader2 size={16} className="spin" /> Updating…</> : 'Update Password'}
+              {loading ? <><Loader2 size={16} className="spin" /> {t('settings.updating')}</> : t('settings.updatePassword')}
             </button>
           </>
         )}
@@ -169,42 +169,42 @@ export default function SettingsPage() {
           <div className="binding-list">
             <div className="binding-row">
               <div className="binding-info">
-                <div className="binding-name">Email</div>
-                <div className="binding-value">{user?.account?.includes('@') ? user.account : 'Not bound'}</div>
+                <div className="binding-name">{t('settings.email')}</div>
+                <div className="binding-value">{user?.account?.includes('@') ? user.account : t('settings.notBound')}</div>
               </div>
-              <span className="binding-tag bound">Primary</span>
+              <span className="binding-tag bound">{t('settings.primary')}</span>
             </div>
             <div className="binding-row">
               <div className="binding-info">
-                <div className="binding-name">Phone</div>
-                <div className="binding-value">{bindState.phone || 'Not bound'}</div>
+                <div className="binding-name">{t('settings.phone')}</div>
+                <div className="binding-value">{bindState.phone || t('settings.notBound')}</div>
               </div>
               {bindState.phone ? (
-                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => handleUnbind('phone')}>Unlink</button>
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => handleUnbind('phone')}>{t('settings.unlink')}</button>
               ) : (
-                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => openBindDialog('phone')}>Link</button>
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => openBindDialog('phone')}>{t('settings.link')}</button>
               )}
             </div>
             <div className="binding-row">
               <div className="binding-info">
-                <div className="binding-name">Google</div>
-                <div className="binding-value">{bindState.google || 'Not bound'}</div>
+                <div className="binding-name">{t('settings.google')}</div>
+                <div className="binding-value">{bindState.google || t('settings.notBound')}</div>
               </div>
               {bindState.google ? (
-                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => handleUnbind('google')}>Unlink</button>
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => handleUnbind('google')}>{t('settings.unlink')}</button>
               ) : (
-                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => openBindDialog('google')}>Link</button>
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => openBindDialog('google')}>{t('settings.link')}</button>
               )}
             </div>
             <div className="binding-row">
               <div className="binding-info">
-                <div className="binding-name">Apple ID</div>
-                <div className="binding-value">{bindState.apple || 'Not bound'}</div>
+                <div className="binding-name">{t('settings.appleId')}</div>
+                <div className="binding-value">{bindState.apple || t('settings.notBound')}</div>
               </div>
               {bindState.apple ? (
-                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => handleUnbind('apple')}>Unlink</button>
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => handleUnbind('apple')}>{t('settings.unlink')}</button>
               ) : (
-                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => openBindDialog('apple')}>Link</button>
+                <button className="btn ghost" style={{ height: 32, fontSize: 11, padding: '0 14px' }} onClick={() => openBindDialog('apple')}>{t('settings.link')}</button>
               )}
             </div>
           </div>
@@ -213,17 +213,17 @@ export default function SettingsPage() {
         {type === 'deactivate' && (
           <div className="deactivate-section">
             <p style={{ color: 'var(--ink-soft)', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
-              Deactivating your account will permanently delete all your focus data, artworks, and presets. This action cannot be undone.
+              {t('settings.deactivateDesc')}
             </p>
             <p style={{ color: 'var(--ink-muted)', fontSize: 13, marginBottom: 24 }}>
-              If you're sure, please confirm below.
+              {t('settings.deactivateConfirm')}
             </p>
             <button
               className="btn block"
               style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }}
               onClick={() => setConfirmDeactivate(true)}
             >
-              Deactivate My Account
+              {t('settings.deactivateBtn')}
             </button>
           </div>
         )}
@@ -233,11 +233,11 @@ export default function SettingsPage() {
       {confirmDeactivate && (
         <div className="modal-mask" onClick={() => setConfirmDeactivate(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>Confirm Deactivation</h4>
-            <p>This will permanently delete your account and all data. Are you absolutely sure?</p>
+            <h4>{t('settings.confirmDeactivation')}</h4>
+            <p>{t('settings.confirmDeactivationDesc')}</p>
             <div className="modal-actions">
-              <button className="btn ghost" onClick={() => setConfirmDeactivate(false)}>Cancel</button>
-              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={handleDeactivate}>Delete Forever</button>
+              <button className="btn ghost" onClick={() => setConfirmDeactivate(false)}>{t('common.cancel')}</button>
+              <button className="btn" style={{ background: '#9a4a4a', borderColor: '#9a4a4a' }} onClick={handleDeactivate}>{t('settings.deleteForever')}</button>
             </div>
           </div>
         </div>
@@ -247,9 +247,9 @@ export default function SettingsPage() {
       {bindChannel && (
         <div className="modal-mask" onClick={() => setBindChannel(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>Link {bindChannel === 'phone' ? 'Phone' : bindChannel === 'google' ? 'Google' : 'Apple ID'}</h4>
+            <h4>{bindChannel === 'phone' ? t('settings.linkPhone') : bindChannel === 'google' ? t('settings.linkGoogle') : t('settings.linkApple')}</h4>
             <div className="field" style={{ marginTop: 12 }}>
-              <label>{bindChannel === 'phone' ? 'Phone Number' : 'Account ID'}</label>
+              <label>{bindChannel === 'phone' ? t('settings.phoneNumber') : t('settings.accountId')}</label>
               <input
                 type={bindChannel === 'phone' ? 'tel' : 'text'}
                 value={bindValue}
@@ -261,8 +261,8 @@ export default function SettingsPage() {
               {bindError && <span className="field-error">{bindError}</span>}
             </div>
             <div className="modal-actions" style={{ marginTop: 18 }}>
-              <button className="btn ghost" onClick={() => setBindChannel(null)}>Cancel</button>
-              <button className="btn" onClick={confirmBind}>Link</button>
+              <button className="btn ghost" onClick={() => setBindChannel(null)}>{t('common.cancel')}</button>
+              <button className="btn" onClick={confirmBind}>{t('settings.link')}</button>
             </div>
           </div>
         </div>
@@ -280,25 +280,24 @@ export default function SettingsPage() {
 export function AboutPage() {
   const { type } = useParams()
   const nav = useNavigate()
-  const { user } = useApp()
+  const { t } = useApp()
   const [feedback, setFeedback] = useState('')
   const [toast, setToast] = useState('')
 
   const titles = {
-    terms: 'Terms of Service',
-    privacy: 'Privacy Policy',
-    feedback: 'Feedback',
-    info: 'About'
+    terms: t('about.terms'),
+    privacy: t('about.privacy'),
+    feedback: t('about.feedback'),
+    info: t('about.about')
   }
 
   const handleSubmitFeedback = () => {
     if (!feedback.trim()) {
-      setToast('Please enter your feedback')
+      setToast(t('about.enterFeedback'))
       setTimeout(() => setToast(''), 2000)
       return
     }
-    // Mock: 实际应调用后端
-    setToast('Feedback sent ✓')
+    setToast(t('about.feedbackSent'))
     setFeedback('')
     setTimeout(() => setToast(''), 2000)
   }
@@ -307,14 +306,14 @@ export function AboutPage() {
     <div className="settings-page">
       <div className="settings-page-header">
         <button className="back-btn" onClick={() => nav('/profile')}><ChevronLeft size={24} strokeWidth={1.5} /></button>
-        <h2>{titles[type] || 'About'}</h2>
+        <h2>{titles[type] || t('about.about')}</h2>
         <div style={{ width: 24 }} />
       </div>
 
       <div className="settings-page-body">
         {type === 'terms' && (
           <div className="legal-content">
-            <h3>希音 Healing — Terms of Service</h3>
+            <h3>希音 Healing — {t('about.terms')}</h3>
             <p>Last updated: 2026.08.01</p>
             <p>Welcome to Healing ("希音"). By using this app, you agree to the following terms:</p>
             <p><strong>1. Service Description</strong></p>
@@ -332,7 +331,7 @@ export function AboutPage() {
 
         {type === 'privacy' && (
           <div className="legal-content">
-            <h3>希音 Healing — Privacy Policy</h3>
+            <h3>希音 Healing — {t('about.privacy')}</h3>
             <p>Last updated: 2026.08.01</p>
             <p><strong>1. Data We Collect</strong></p>
             <p>Account information (email/phone, nickname, avatar) for authentication. Focus session data (duration, artworks) is stored locally.</p>
@@ -352,12 +351,12 @@ export function AboutPage() {
         {type === 'feedback' && (
           <>
             <div className="field">
-              <label>Your Feedback</label>
+              <label>{t('about.yourFeedback')}</label>
               <textarea
                 className="feedback-textarea"
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Tell us what you think, or report an issue..."
+                placeholder={t('about.feedbackPlaceholder')}
                 rows={6}
                 maxLength={500}
               />
@@ -366,7 +365,7 @@ export function AboutPage() {
               </div>
             </div>
             <button className="btn block" style={{ marginTop: 16 }} onClick={handleSubmitFeedback}>
-              Send Feedback
+              {t('about.sendFeedback')}
             </button>
           </>
         )}
@@ -377,19 +376,19 @@ export function AboutPage() {
               <img src="assets/logo.png" alt="" style={{ width: 80, height: 80, objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
             </div>
             <h3>希音 Healing</h3>
-            <p style={{ color: 'var(--ink-muted)', fontSize: 13 }}>Version 0.1.0</p>
+            <p style={{ color: 'var(--ink-muted)', fontSize: 13 }}>{t('about.version')}</p>
             <p style={{ color: 'var(--ink-soft)', fontSize: 14, lineHeight: 1.6, marginTop: 20, padding: '0 10px' }}>
-              An invisible focus tool that turns your attention into art. Draw your stillness, one curve at a time.
+              {t('about.desc')}
             </p>
             <div className="about-links">
               <div className="settings-row" onClick={() => nav('/about/terms')} style={{ cursor: 'pointer' }}>
-                <span>Terms of Service</span><span className="arrow">›</span>
+                <span>{t('about.terms')}</span><span className="arrow">›</span>
               </div>
               <div className="settings-row" onClick={() => nav('/about/privacy')} style={{ cursor: 'pointer' }}>
-                <span>Privacy Policy</span><span className="arrow">›</span>
+                <span>{t('about.privacy')}</span><span className="arrow">›</span>
               </div>
               <div className="settings-row" onClick={() => nav('/about/feedback')} style={{ cursor: 'pointer' }}>
-                <span>Feedback</span><span className="arrow">›</span>
+                <span>{t('about.feedback')}</span><span className="arrow">›</span>
               </div>
             </div>
           </div>

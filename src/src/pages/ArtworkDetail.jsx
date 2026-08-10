@@ -1,7 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useApp } from '../store.jsx'
+import { curveTypes } from '../data.js'
 import { ChevronLeft, Share2, ZoomIn, ZoomOut } from 'lucide-react'
+
+// 曲线类型翻译辅助
+function translateCurve(name, lang) {
+  const enList = curveTypes.en
+  const zhList = curveTypes.zh
+  const idx = enList.indexOf(name)
+  if (idx === -1) return name
+  return lang === 'zh' ? zhList[idx] : enList[idx]
+}
 
 function hslToRgba(h, s, l, a) {
   h = ((h % 360) + 360) % 360
@@ -100,7 +110,7 @@ function makePath(seed, curve, savedParams) {
 export default function ArtworkDetail() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { artworks } = useApp()
+  const { artworks, lang, t } = useApp()
   const [scale, setScale] = useState(1)
   const [pos, setPos] = useState({ x: 0, y: 0 })
   const [showShare, setShowShare] = useState(false)
@@ -252,7 +262,7 @@ export default function ArtworkDetail() {
           <button className="back-btn" onClick={() => nav('/gallery')}><ChevronLeft size={24} strokeWidth={1.5} /></button>
         </div>
         <div className="empty" style={{ marginTop: 100 }}>
-          <p>Artwork not found</p>
+          <p>{t('artwork.artworkNotFound')}</p>
         </div>
       </div>
     )
@@ -330,10 +340,10 @@ export default function ArtworkDetail() {
           try {
             await navigator.share({
               files: [file],
-              title: 'My Healing Artwork',
-              text: art.quote ? `"${art.quote.en}"` : ''
+              title: t('artwork.myArtwork'),
+              text: art.quote ? `"${lang === 'zh' ? art.quote.cn : art.quote.en}"` : ''
             })
-            setShareToast('Shared ✓')
+            setShareToast(t('artwork.shared'))
           } catch (e) {
             // 用户取消或失败，下载
             downloadImage(canvas)
@@ -345,7 +355,7 @@ export default function ArtworkDetail() {
       })
     } catch (e) {
       console.warn('[share] failed:', e)
-      setShareToast('Share failed')
+      setShareToast(t('artwork.shareFailed'))
       setTimeout(() => setShareToast(''), 2000)
     }
     setShowShare(null)
@@ -357,9 +367,9 @@ export default function ArtworkDetail() {
       link.download = `healing-${dateStr}.png`
       link.href = canvas.toDataURL('image/png')
       link.click()
-      setShareToast('Saved to device ✓')
+      setShareToast(t('artwork.savedToDevice'))
     } catch (e) {
-      setShareToast('Save failed')
+      setShareToast(t('artwork.saveFailed'))
     }
   }
 
@@ -382,7 +392,7 @@ export default function ArtworkDetail() {
         onTouchEnd={onPointerUp}
         style={{ cursor: scale > 1 ? (dragRef.current.dragging ? 'grabbing' : 'grab') : 'default' }}
       >
-        <div className="artwork-detail-canvas-inner" style={{ transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, transition: dragRef.current.dragging ? 'none' : 'transform 0.1s' }}>
+        <div className={'artwork-detail-canvas-inner' + (art.status !== 'complete' ? ' partial' : '')} style={{ transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, transition: dragRef.current.dragging ? 'none' : 'transform 0.1s' }}>
           {art.previewUrl ? (
             <img ref={imgRef} src={art.previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} draggable={false} />
           ) : (
@@ -401,34 +411,34 @@ export default function ArtworkDetail() {
 
       {art.quote && (
         <div className="artwork-detail-quote">
-          <div className="en">"{art.quote.en}"</div>
-          <div className="cn">{art.quote.cn}</div>
+          <div className={lang === 'zh' ? 'cn' : 'en'}>"{lang === 'zh' ? art.quote.cn : art.quote.en}"</div>
+          <div className={lang === 'zh' ? 'en' : 'cn'} style={{ opacity: 0.6, marginTop: 4 }}>{lang === 'zh' ? art.quote.en : art.quote.cn}</div>
         </div>
       )}
 
       <div className="artwork-detail-info">
         <div className="info-row">
-          <span className="label">Date</span>
+          <span className="label">{t('artwork.date')}</span>
           <span className="value">{dateStr}</span>
         </div>
         <div className="info-row">
-          <span className="label">Duration</span>
-          <span className="value">{art.duration} min</span>
+          <span className="label">{t('artwork.duration')}</span>
+          <span className="value">{art.duration} {t('artwork.min')}</span>
         </div>
         <div className="info-row">
-          <span className="label">Curve</span>
-          <span className="value">{art.curveType}</span>
+          <span className="label">{t('artwork.curve')}</span>
+          <span className="value">{translateCurve(art.curveType, lang)}</span>
         </div>
         <div className="info-row">
-          <span className="label">Mix</span>
+          <span className="label">{t('artwork.mix')}</span>
           <span className="value">{art.mixName || '—'}</span>
         </div>
         <div className="info-row">
-          <span className="label">Status</span>
+          <span className="label">{t('artwork.status')}</span>
           {art.status === 'complete' ? (
-            <span className="value" style={{ color: '#4a7a4a' }}>Complete</span>
+            <span className="value" style={{ color: '#4a7a4a' }}>{t('artwork.complete')}</span>
           ) : (
-            <span className="value" style={{ color: '#9a4a4a' }}>Fragment · {art.interruptReason === 'distracted' ? 'Distracted' : 'Abandoned'} at {art.elapsedMin || 1}min</span>
+            <span className="value" style={{ color: '#9a4a4a' }}>{t('artwork.fragment')} · {art.interruptReason === 'distracted' ? t('artwork.distracted') : t('artwork.abandoned')} {t('artwork.at')} {art.elapsedMin || 1}{t('artwork.min')}</span>
           )}
         </div>
       </div>
@@ -437,11 +447,11 @@ export default function ArtworkDetail() {
       {showShare === 'menu' && (
         <div className="modal-mask" onClick={() => setShowShare(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>Share Artwork</h4>
+            <h4>{t('artwork.shareArtwork')}</h4>
             <div className="modal-actions" style={{ flexDirection: 'column', gap: 8 }}>
-              <button className="btn block" onClick={() => { setShowShare('imageOnly'); handleShareImage() }}>Share Artwork Only</button>
-              <button className="btn block" onClick={() => { setShowShare('withQuote'); setTimeout(handleShareImage, 50) }}>Share with Quote</button>
-              <button className="btn ghost block" onClick={() => setShowShare(null)}>Cancel</button>
+              <button className="btn block" onClick={() => { setShowShare('imageOnly'); handleShareImage() }}>{t('artwork.shareArtworkOnly')}</button>
+              <button className="btn block" onClick={() => { setShowShare('withQuote'); setTimeout(handleShareImage, 50) }}>{t('artwork.shareWithQuote')}</button>
+              <button className="btn ghost block" onClick={() => setShowShare(null)}>{t('common.cancel')}</button>
             </div>
           </div>
         </div>

@@ -4,9 +4,17 @@ import { useApp } from '../store.jsx'
 import { officialMusic, noiseOptions, atmosOptions, binauralOptions, findMusicById } from '../data.js'
 import * as audioEngine from '../audioEngine.js'
 
+// Helper: 取双语字段在当前语言下的字符串
+function localized(field, lang) {
+  if (field && typeof field === 'object' && (field.zh || field.en)) {
+    return field[lang] || field.en
+  }
+  return field
+}
+
 export default function Mixer() {
   const nav = useNavigate()
-  const { savePreset, setCurrentMix, isPresetNameExist, currentMix } = useApp()
+  const { savePreset, setCurrentMix, isPresetNameExist, currentMix, lang, t } = useApp()
 
   const [main, setMain] = useState(null)
   const [mainVol, setMainVol] = useState(70)
@@ -187,7 +195,7 @@ export default function Mixer() {
   }, [biVol, biMuted])
 
   const buildMix = () => ({
-    name: presetName.trim() || 'Untitled',
+    name: presetName.trim() || t('mixer.untitled'),
     mainMusicId: main?.id,
     mainMusicTitle: main?.name,
     mainVolume: mainVol / 100,
@@ -215,7 +223,7 @@ export default function Mixer() {
     setShowOverwrite(false)
     setPresetName('')
     setDirty(false)
-    flashToast('Preset saved ✓')
+    flashToast(t('mixer.presetSaved'))
     if (pendingStart) {
       setPendingStart(false)
       doStart()
@@ -224,7 +232,7 @@ export default function Mixer() {
 
   const handleStart = () => {
     if (!main) {
-      flashToast('Please select a main music.')
+      flashToast(t('mixer.selectMainFirst'))
       return
     }
     // 检查是否有未保存的更改
@@ -281,31 +289,33 @@ export default function Mixer() {
     setBiMuted(false)
     setDirty(false)
     stateRef.current = { dirty: false, hasAny: false }
-    flashToast('Cleared')
+    flashToast(t('mixer.cleared'))
   }
 
   // 主音乐搜索过滤
-  const filteredMusic = officialMusic.filter((m) =>
-    m.name.toLowerCase().includes(mainSearch.toLowerCase()) ||
-    m.tag.toLowerCase().includes(mainSearch.toLowerCase())
-  )
+  const filteredMusic = officialMusic.filter((m) => {
+    const name = (m.name && (m.name[lang] || m.name.en) || '').toLowerCase()
+    const tag = (m.tag && (m.tag[lang] || m.tag.en) || '').toLowerCase()
+    const search = mainSearch.toLowerCase()
+    return name.includes(search) || tag.includes(search)
+  })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100% - 0px)' }}>
       <div className="page-pad" style={{ paddingBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 className="page-title cn">Mix Space</h1>
-        <span className="text-link" onClick={handleClear} style={{ fontSize: 14, color: 'var(--ink-muted)' }}>Clear</span>
+        <h1 className="page-title cn">{t('mixer.title')}</h1>
+        <span className="text-link" onClick={handleClear} style={{ fontSize: 14, color: 'var(--ink-muted)' }}>{t('mixer.clear')}</span>
       </div>
 
       <div className="track">
         <div className="head">
-          <span className="label">Main Music</span>
-          <span className={'mute' + (mainMuted ? ' active' : '')} onClick={handleMuteMain}>Mute</span>
+          <span className="label">{t('mixer.mainMusic')}</span>
+          <span className={'mute' + (mainMuted ? ' active' : '')} onClick={handleMuteMain}>{t('mixer.mute')}</span>
         </div>
         <div className="body" onClick={() => handleOpenSheet('main')}>
-          {main ? main.name : <span className="placeholder">Select a main music.</span>}
+          {main ? localized(main.name, lang) : <span className="placeholder">{t('mixer.selectMain')}</span>}
         </div>
-        {main && <div className="desc">{main.tag} · {main.duration}</div>}
+        {main && <div className="desc">{localized(main.tag, lang)} · {main.duration}</div>}
         {main && (
           <div className="slider">
             <span>VOL</span>
@@ -317,17 +327,17 @@ export default function Mixer() {
 
       <div className="track">
         <div className="head">
-          <span className="label">Noise & Ambience</span>
-          <span className={'mute' + (bgMuted ? ' active' : '')} onClick={handleMuteBg}>Mute</span>
+          <span className="label">{t('mixer.noiseAmbience')}</span>
+          <span className={'mute' + (bgMuted ? ' active' : '')} onClick={handleMuteBg}>{t('mixer.mute')}</span>
         </div>
         <div className="body" onClick={() => handleOpenSheet('noise')}>
           {bgNoise || atmos.length > 0 ? (
             <>
-              {bgNoise?.name || 'No background noise'}
-              {atmos.length > 0 ? ' · ' + atmos.map((a) => a.name).join(' · ') : ''}
+              {bgNoise ? localized(bgNoise.name, lang) : t('mixer.noBgNoise')}
+              {atmos.length > 0 ? ' · ' + atmos.map((a) => localized(a.name, lang)).join(' · ') : ''}
             </>
           ) : (
-            <span className="placeholder">Select noise / ambient.</span>
+            <span className="placeholder">{t('mixer.selectNoise')}</span>
           )}
         </div>
         {bgNoise && (
@@ -340,7 +350,7 @@ export default function Mixer() {
         {/* 氛围音独立音量滑块和 × 取消 */}
         {atmos.map((a) => (
           <div key={a.id} className="atmos-row">
-            <span className="atmos-name">{a.name}</span>
+            <span className="atmos-name">{localized(a.name, lang)}</span>
             <div className="slider" style={{ flex: 1, margin: 0 }}>
               <input type="range" min={0} max={100} value={Math.round((a.volume ?? 0.5) * 100)} onChange={(e) => setAtmosVolume(a.id, +e.target.value / 100)} />
               <span className="val">{Math.round((a.volume ?? 0.5) * 100)}</span>
@@ -352,13 +362,13 @@ export default function Mixer() {
 
       <div className="track">
         <div className="head">
-          <span className="label">Binaural Beats</span>
-          <span className={'mute' + (biMuted ? ' active' : '')} onClick={handleMuteBi}>Mute</span>
+          <span className="label">{t('mixer.binauralBeats')}</span>
+          <span className={'mute' + (biMuted ? ' active' : '')} onClick={handleMuteBi}>{t('mixer.mute')}</span>
         </div>
         <div className="body" onClick={() => handleOpenSheet('binaural')}>
-          {binaural ? `${binaural.name} Wave` : <span className="placeholder">Select a binaural beat.</span>}
+          {binaural ? (lang === 'zh' ? `${localized(binaural.name, lang)}${t('mixer.wave')}` : `${localized(binaural.name, lang)} Wave`) : <span className="placeholder">{t('mixer.selectBinaural')}</span>}
         </div>
-        {binaural && <div className="desc">{binaural.range} — Headphones recommended</div>}
+        {binaural && <div className="desc">{binaural.range} — {t('mixer.headphonesRec')}</div>}
         {binaural && (
           <div className="slider">
             <span>VOL</span>
@@ -369,18 +379,18 @@ export default function Mixer() {
       </div>
 
       <div className="mixer-actions">
-        <button className="btn ghost" onClick={() => setShowSave(true)}>Save</button>
-        <button className="btn" onClick={handleStart}>Begin Focus</button>
+        <button className="btn ghost" onClick={() => setShowSave(true)}>{t('mixer.save')}</button>
+        <button className="btn" onClick={handleStart}>{t('mixer.beginFocus')}</button>
       </div>
 
       {showMain && (
         <div className="sheet-mask" onClick={() => setShowMain(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h4>Select Main Music</h4>
+            <h4>{t('mixer.selectMainMusic')}</h4>
             <div className="search" style={{ margin: '0 0 14px' }}>
               <input
                 type="text"
-                placeholder="Search music..."
+                placeholder={t('mixer.searchMusic')}
                 value={mainSearch}
                 onChange={(e) => setMainSearch(e.target.value)}
               />
@@ -388,14 +398,14 @@ export default function Mixer() {
             {filteredMusic.map((m) => (
               <div key={m.id} className={'opt' + (main?.id === m.id ? ' checked' : '')} onClick={() => { setMain(m); setShowMain(false); setMainSearch('') }}>
                 <div className="left">
-                  <div>{m.name}</div>
-                  <div className="desc">{m.tag} · {m.duration}</div>
+                  <div>{localized(m.name, lang)}</div>
+                  <div className="desc">{localized(m.tag, lang)} · {m.duration}</div>
                 </div>
               </div>
             ))}
             {filteredMusic.length === 0 && (
               <div style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '20px 0', fontSize: 13 }}>
-                No music found
+                {t('mixer.noMusicFound')}
               </div>
             )}
           </div>
@@ -405,7 +415,7 @@ export default function Mixer() {
       {showNoise && (
         <div className="sheet-mask" onClick={() => setShowNoise(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h4>Background Noise</h4>
+            <h4>{t('mixer.backgroundNoise')}</h4>
             <div className="grid-opt">
               {[...noiseOptions.pure, ...noiseOptions.ambient].map((n) => (
                 <div
@@ -413,11 +423,11 @@ export default function Mixer() {
                   className={'pill' + (bgNoise?.id === n.id ? ' checked' : '')}
                   onClick={() => setBgNoise(bgNoise?.id === n.id ? null : n)}
                 >
-                  {n.name}
+                  {localized(n.name, lang)}
                 </div>
               ))}
             </div>
-            <h4 style={{ marginTop: 22 }}>Atmosphere ({atmos.length} / 2 selected)</h4>
+            <h4 style={{ marginTop: 22 }}>{t('mixer.atmosphere')} ({atmos.length} / 2 {t('mixer.selected')})</h4>
             <div className="grid-opt">
               {atmosOptions.map((a) => {
                 const isChecked = atmos.find((x) => x.id === a.id)
@@ -431,12 +441,12 @@ export default function Mixer() {
                       toggleAtmos(a)
                     }}
                   >
-                    {a.name}
+                    {localized(a.name, lang)}
                   </div>
                 )
               })}
             </div>
-            <button className="btn block" style={{ marginTop: 22 }} onClick={() => setShowNoise(false)}>Done</button>
+            <button className="btn block" style={{ marginTop: 22 }} onClick={() => setShowNoise(false)}>{t('mixer.done')}</button>
           </div>
         </div>
       )}
@@ -444,17 +454,17 @@ export default function Mixer() {
       {showBinaural && (
         <div className="sheet-mask" onClick={() => setShowBinaural(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h4>Binaural Beats</h4>
+            <h4>{t('mixer.binauralBeats')}</h4>
             {binauralOptions.map((b) => (
               <div key={b.id} className={'opt' + (binaural?.id === b.id ? ' checked' : '')} onClick={() => { setBinaural(b); setShowBinaural(false) }}>
                 <div className="left">
-                  <div>{b.name} Wave · {b.range}</div>
-                  <div className="desc">{b.desc}</div>
+                  <div>{lang === 'zh' ? `${localized(b.name, lang)}${t('mixer.wave')}` : `${localized(b.name, lang)} Wave`} · {b.range}</div>
+                  <div className="desc">{localized(b.desc, lang)}</div>
                 </div>
               </div>
             ))}
             <div className="opt" onClick={() => { setBinaural(null); setShowBinaural(false) }}>
-              <div className="left"><div>None</div></div>
+              <div className="left"><div>{t('mixer.none')}</div></div>
             </div>
           </div>
         </div>
@@ -463,20 +473,20 @@ export default function Mixer() {
       {showSave && (
         <div className="modal-mask" onClick={() => { setShowSave(false); setPendingStart(false) }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>Save Mix Preset</h4>
-            <p>Give your preset a name.</p>
+            <h4>{t('mixer.saveMixPreset')}</h4>
+            <p>{t('mixer.presetNamePrompt')}</p>
             <input
               className="field"
               style={{ width: '100%', height: 42, border: 'none', borderBottom: '1px solid var(--line-strong)', fontSize: 16, marginBottom: 18 }}
               maxLength={20}
-              placeholder="e.g. Afternoon Reading"
+              placeholder={t('mixer.presetNamePlaceholder')}
               value={presetName}
               onChange={(e) => setPresetName(e.target.value)}
               autoFocus
             />
             <div className="modal-actions">
-              <button className="btn ghost" onClick={() => { setShowSave(false); setPendingStart(false) }}>Cancel</button>
-              <button className="btn" onClick={handleSave}>Save</button>
+              <button className="btn ghost" onClick={() => { setShowSave(false); setPendingStart(false) }}>{t('mixer.cancel')}</button>
+              <button className="btn" onClick={handleSave}>{t('mixer.save')}</button>
             </div>
           </div>
         </div>
@@ -486,11 +496,11 @@ export default function Mixer() {
       {showOverwrite && (
         <div className="modal-mask" onClick={() => setShowOverwrite(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>Name Already Exists</h4>
-            <p>A preset named "{presetName.trim()}" already exists. Do you want to overwrite it or rename?</p>
+            <h4>{t('mixer.nameExists')}</h4>
+            <p>{t('mixer.nameExistsDesc', { name: presetName.trim() })}</p>
             <div className="modal-actions" style={{ flexDirection: 'column', gap: 8 }}>
-              <button className="btn block" onClick={doSave}>Overwrite</button>
-              <button className="btn ghost block" onClick={() => { setShowOverwrite(false); setShowSave(true) }}>Rename</button>
+              <button className="btn block" onClick={doSave}>{t('mixer.overwrite')}</button>
+              <button className="btn ghost block" onClick={() => { setShowOverwrite(false); setShowSave(true) }}>{t('mixer.rename')}</button>
             </div>
           </div>
         </div>
@@ -500,12 +510,12 @@ export default function Mixer() {
       {showUnsaved && (
         <div className="modal-mask" onClick={() => setShowUnsaved(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4>Unsaved Changes</h4>
-            <p>Your current mix configuration has unsaved changes. What would you like to do?</p>
+            <h4>{t('mixer.unsavedChanges')}</h4>
+            <p>{t('mixer.unsavedDesc')}</p>
             <div className="modal-actions" style={{ flexDirection: 'column', gap: 8 }}>
-              <button className="btn block" onClick={() => { setShowUnsaved(false); setShowSave(true); setPendingStart(true) }}>Save & Start</button>
-              <button className="btn ghost block" onClick={() => { setShowUnsaved(false); doStart() }}>Just Start</button>
-              <button className="btn ghost block" onClick={() => setShowUnsaved(false)}>Cancel</button>
+              <button className="btn block" onClick={() => { setShowUnsaved(false); setShowSave(true); setPendingStart(true) }}>{t('mixer.saveAndStart')}</button>
+              <button className="btn ghost block" onClick={() => { setShowUnsaved(false); doStart() }}>{t('mixer.justStart')}</button>
+              <button className="btn ghost block" onClick={() => setShowUnsaved(false)}>{t('mixer.cancel')}</button>
             </div>
           </div>
         </div>

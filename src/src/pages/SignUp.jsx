@@ -14,7 +14,7 @@ export default function SignUp() {
   const [formError, setFormError] = useState('')
   const [loading, setLoading] = useState(false)
   const [codeSent, setCodeSent] = useState(false)
-  const { setUser } = useApp()
+  const { setUser, t } = useApp()
   const nav = useNavigate()
   const sentCodeRef = useRef('')
 
@@ -26,41 +26,39 @@ export default function SignUp() {
 
   const handleSendCode = () => {
     if (!email) {
-      setErrors((p) => ({ ...p, email: 'Email is required.' }))
+      setErrors((p) => ({ ...p, email: t('signup.emailRequired') }))
       return
     }
     if (!validateEmail(email)) {
-      setErrors((p) => ({ ...p, email: 'Please enter a valid email.' }))
+      setErrors((p) => ({ ...p, email: t('signup.emailInvalid') }))
       return
     }
     if (auth.exists(email)) {
-      setErrors((p) => ({ ...p, email: 'This email is already registered.' }))
+      setErrors((p) => ({ ...p, email: t('signup.emailExists') }))
       return
     }
     if (countdown > 0) return
-    // 模拟发送验证码
     const mockCode = String(Math.floor(100000 + Math.random() * 900000))
     sentCodeRef.current = mockCode
     setCodeSent(true)
     setCountdown(60)
-    // 仅演示用，实际环境由后端发送邮件
     console.info('[demo] verification code:', mockCode)
   }
 
   const validate = () => {
     const errs = {}
-    if (!email) errs.email = 'Email is required.'
-    else if (!validateEmail(email)) errs.email = 'Please enter a valid email.'
-    else if (auth.exists(email)) errs.email = 'This email is already registered.'
+    if (!email) errs.email = t('signup.emailRequired')
+    else if (!validateEmail(email)) errs.email = t('signup.emailInvalid')
+    else if (auth.exists(email)) errs.email = t('signup.emailExists')
 
-    if (!code) errs.code = 'Verification code is required.'
-    else if (codeSent && code !== sentCodeRef.current) errs.code = 'Incorrect verification code.'
+    if (!code) errs.code = t('signup.codeRequired')
+    else if (codeSent && code !== sentCodeRef.current) errs.code = t('signup.codeIncorrect')
 
-    if (!nickname.trim()) errs.nickname = 'Nickname is required.'
-    else if (nickname.trim().length > 20) errs.nickname = 'Nickname must be 20 characters or fewer.'
+    if (!nickname.trim()) errs.nickname = t('signup.nicknameRequired')
+    else if (nickname.trim().length > 20) errs.nickname = t('signup.nicknameLong')
 
-    if (!password) errs.password = 'Password is required.'
-    else if (password.length < 6) errs.password = 'Password must be at least 6 characters.'
+    if (!password) errs.password = t('signup.passwordRequired')
+    else if (password.length < 6) errs.password = t('signup.passwordShort')
 
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -89,30 +87,30 @@ export default function SignUp() {
     <div className="login-page">
       <div className="login-header">
         <img className="login-header-img" src="assets/signin.png" alt="" />
-        <h1 className="login-header-title">Sign Up</h1>
+        <h1 className="login-header-title">{t('signup.title')}</h1>
       </div>
 
       <div className="login-body">
         <div className="field">
-          <label>Email</label>
+          <label>{t('signup.email')}</label>
           <input
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: '' })); setFormError('') }}
-            placeholder="you@example.com"
+            placeholder={t('login.emailPlaceholder')}
             autoComplete="email"
           />
           {errors.email && <span className="field-error">{errors.email}</span>}
         </div>
 
         <div className="field">
-          <label>Verification Code</label>
+          <label>{t('signup.verifyCode')}</label>
           <div className="field-code">
             <input
               type="text"
               value={code}
               onChange={(e) => { setCode(e.target.value); setErrors((p) => ({ ...p, code: '' })); setFormError('') }}
-              placeholder="6-digit code"
+              placeholder={t('signup.codePlaceholder')}
               maxLength={6}
             />
             <button
@@ -121,37 +119,37 @@ export default function SignUp() {
               disabled={countdown > 0}
               type="button"
             >
-              {countdown > 0 ? `${countdown}s` : 'Send'}
+              {countdown > 0 ? `${countdown}s` : t('signup.send')}
             </button>
           </div>
           {errors.code && <span className="field-error">{errors.code}</span>}
           {codeSent && !errors.code && (
-            <span className="field-hint">Demo code: {sentCodeRef.current}</span>
+            <span className="field-hint">{t('signup.demoCode')}{sentCodeRef.current}</span>
           )}
         </div>
 
         <div className="field">
-          <label>Nickname</label>
+          <label>{t('signup.nickname')}</label>
           <input
             type="text"
             value={nickname}
             onChange={(e) => { setNickname(e.target.value); setErrors((p) => ({ ...p, nickname: '' })); setFormError('') }}
             onKeyDown={onKeyDown}
-            placeholder="Your display name"
+            placeholder={t('signup.nicknamePlaceholder')}
             maxLength={20}
           />
           {errors.nickname && <span className="field-error">{errors.nickname}</span>}
         </div>
 
         <div className="field">
-          <label>Password</label>
+          <label>{t('signup.password')}</label>
           <div className="field-pwd">
             <input
               type={showPwd ? 'text' : 'password'}
               value={password}
               onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: '' })); setFormError('') }}
               onKeyDown={onKeyDown}
-              placeholder="At least 6 characters"
+              placeholder={t('signup.passwordPlaceholder')}
               autoComplete="new-password"
             />
             <button
@@ -159,7 +157,7 @@ export default function SignUp() {
               className="pwd-toggle"
               onClick={() => setShowPwd((v) => !v)}
               tabIndex={-1}
-              aria-label={showPwd ? 'Hide password' : 'Show password'}
+              aria-label={showPwd ? t('signup.hidePassword') : t('signup.showPassword')}
             >
               {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -170,12 +168,12 @@ export default function SignUp() {
         {formError && <div className="form-error">{formError}</div>}
 
         <button className="btn block" onClick={handleSignUp} disabled={loading} style={{ marginTop: '12px' }}>
-          {loading ? <><Loader2 size={16} className="spin" /> Creating…</> : 'Sign Up'}
+          {loading ? <><Loader2 size={16} className="spin" /> {t('signup.creating')}</> : t('signup.signUpBtn')}
         </button>
 
         <div className="login-footer">
-          <span className="login-footer-text">Already have an account?</span>
-          <span className="text-link" style={{ fontWeight: 600 }} onClick={() => nav('/login')}> Login</span>
+          <span className="login-footer-text">{t('signup.hasAccount')}</span>
+          <span className="text-link" style={{ fontWeight: 600 }} onClick={() => nav('/login')}> {t('signup.login')}</span>
         </div>
       </div>
     </div>

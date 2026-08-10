@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
+import { translate, DEFAULT_LANG } from './i18n.js'
 
 const AppContext = createContext(null)
 
@@ -6,17 +7,75 @@ const STORAGE_KEY = 'healing_app_state_v1'
 const ACCOUNTS_KEY = 'healing_app_accounts_v1'
 const REMEMBER_KEY = 'healing_app_remember_v1'
 const BINDINGS_KEY = 'healing_app_bindings_v1'
+const LANG_KEY = 'healing_app_lang_v1'
 
 // ====== localStorage 持久化 ======
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw)
+    const data = JSON.parse(raw)
+    // 迁移旧版本预设：把纯字符串 name 字段升级为 {en, zh} 对象
+    if (data && Array.isArray(data.presets)) {
+      data.presets = data.presets.map(migratePreset)
+    }
+    return data
   } catch (e) {
     console.warn('[store] loadState failed:', e)
     return null
   }
+}
+
+// 把一个 mix preset 中的字段（name/title）从字符串升级为双语对象
+function localizeField(field) {
+  if (field == null) return field
+  if (typeof field === 'object' && (field.en || field.zh)) return field
+  if (typeof field === 'string') {
+    return { en: field, zh: field }
+  }
+  return field
+}
+
+// 从 data.js 中按 id 反查双语对象，找不到则回退为 {en: str, zh: str}
+function resolveName(field) {
+  if (field == null) return field
+  if (typeof field === 'object' && (field.en || field.zh)) return field
+  if (typeof field !== 'string') return field
+  // 尝试按 id 在 noise / atmos / binaural / 音乐列表中查找
+  try {
+    // 动态引入避免循环依赖问题（仅在迁移阶段需要）
+    const data = window.__HEALING_DATA__ || null
+    if (data) {
+      const all = [
+        ...(data.officialMusic || []),
+        ...(data.noiseOptions?.pure || []),
+        ...(data.noiseOptions?.ambient || []),
+        ...(data.atmosOptions || []),
+        ...(data.binauralOptions || [])
+      ]
+      const hit = all.find((x) => x && (x.name === field || x.id === field))
+      if (hit && typeof hit.name === 'object') return hit.name
+    }
+  } catch (e) { /* noop */ }
+  return localizeField(field)
+}
+
+function migratePreset(p) {
+  if (!p) return p
+  // name 是用户起的名字，保留原值
+  // 但 mainMusicTitle / bgNoise.name / ambient[].name / binaural.name 这些应是数据字段
+  const next = { ...p }
+  if (p.mainMusicTitle != null) next.mainMusicTitle = resolveName(p.mainMusicTitle)
+  if (p.bgNoise && p.bgNoise.name != null) {
+    next.bgNoise = { ...p.bgNoise, name: resolveName(p.bgNoise.name) }
+  }
+  if (Array.isArray(p.ambient)) {
+    next.ambient = p.ambient.map((a) => a && a.name != null ? { ...a, name: resolveName(a.name) } : a)
+  }
+  if (p.binaural && p.binaural.name != null) {
+    next.binaural = { ...p.binaural, name: resolveName(p.binaural.name) }
+  }
+  return next
 }
 
 // ====== 本地账户库（模拟后端） ======
@@ -222,6 +281,15 @@ export function AppProvider({ children }) {
   // 从 localStorage 初始化
   const persisted = loadState()
 
+  // 语言：从 localStorage 独立读取，默认 en
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem(LANG_KEY) || DEFAULT_LANG
+    } catch (e) {
+      return DEFAULT_LANG
+    }
+  })
+
   const [user, setUser] = useState(persisted?.user ?? null)
   const [onboardingSeen, setOnboardingSeen] = useState(persisted?.onboardingSeen ?? false)
   const [favorites, setFavorites] = useState(persisted?.favorites ?? [])
@@ -237,6 +305,17 @@ export function AppProvider({ children }) {
   const [recentQuotes, setRecentQuotes] = useState([])
 
   const markOnboardingSeen = useCallback(() => setOnboardingSeen(true), [])
+
+  // 持久化语言
+  const changeLang = useCallback((newLang) => {
+    setLang(newLang)
+    try {
+      localStorage.setItem(LANG_KEY, newLang)
+    } catch (e) { /* noop */ }
+  }, [])
+
+  // 翻译函数
+  const t = useCallback((key, params) => translate(lang, key, params), [lang])
 
   // 持久化到 localStorage（排除 currentMix 和 recentQuotes 等运行时状态）
   useEffect(() => {
@@ -311,9 +390,10 @@ export function AppProvider({ children }) {
       artworks, addArtwork, deleteArtwork,
       currentMix, setCurrentMix,
       settings, setSettings,
-      recentQuotes, recordQuote
+      recentQuotes, recordQuote,
+      lang, setLang: changeLang, t
     }),
-    [user, onboardingSeen, markOnboardingSeen, favorites, presets, artworks, currentMix, settings, toggleFavorite, addArtwork, deleteArtwork, savePreset, deletePreset, isPresetNameExist, recentQuotes, recordQuote]
+    [user, onboardingSeen, markOnboardingSeen, favorites, presets, artworks, currentMix, settings, toggleFavorite, addArtwork, deleteArtwork, savePreset, deletePreset, isPresetNameExist, recentQuotes, recordQuote, lang, changeLang, t]
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

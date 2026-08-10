@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { auth, validateEmail } from '../store.jsx'
+import { useApp, auth, validateEmail } from '../store.jsx'
 import { Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react'
 
 export default function ForgotPassword() {
@@ -15,6 +15,7 @@ export default function ForgotPassword() {
   const [formSuccess, setFormSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const { t } = useApp()
   const nav = useNavigate()
   const sentCodeRef = useRef('')
 
@@ -26,15 +27,15 @@ export default function ForgotPassword() {
 
   const handleSendCode = () => {
     if (!email) {
-      setErrors((p) => ({ ...p, email: 'Email is required.' }))
+      setErrors((p) => ({ ...p, email: t('forgot.emailRequired') }))
       return
     }
     if (!validateEmail(email)) {
-      setErrors((p) => ({ ...p, email: 'Please enter a valid email.' }))
+      setErrors((p) => ({ ...p, email: t('forgot.emailInvalid') }))
       return
     }
     if (!auth.exists(email)) {
-      setErrors((p) => ({ ...p, email: 'No account found with this email.' }))
+      setErrors((p) => ({ ...p, email: t('forgot.emailNotFound') }))
       return
     }
     if (countdown > 0) return
@@ -47,15 +48,15 @@ export default function ForgotPassword() {
 
   const validate = () => {
     const errs = {}
-    if (!email) errs.email = 'Email is required.'
-    else if (!validateEmail(email)) errs.email = 'Please enter a valid email.'
-    else if (!auth.exists(email)) errs.email = 'No account found with this email.'
+    if (!email) errs.email = t('forgot.emailRequired')
+    else if (!validateEmail(email)) errs.email = t('forgot.emailInvalid')
+    else if (!auth.exists(email)) errs.email = t('forgot.emailNotFound')
 
-    if (!code) errs.code = 'Verification code is required.'
-    else if (codeSent && code !== sentCodeRef.current) errs.code = 'Incorrect verification code.'
+    if (!code) errs.code = t('forgot.codeRequired')
+    else if (codeSent && code !== sentCodeRef.current) errs.code = t('forgot.codeIncorrect')
 
-    if (!newPassword) errs.password = 'New password is required.'
-    else if (newPassword.length < 6) errs.password = 'Password must be at least 6 characters.'
+    if (!newPassword) errs.password = t('forgot.passwordRequired')
+    else if (newPassword.length < 6) errs.password = t('forgot.passwordShort')
 
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -85,15 +86,15 @@ export default function ForgotPassword() {
       <div className="login-page">
         <div className="login-header">
           <img className="login-header-img" src="assets/signin.png" alt="" />
-          <h1 className="login-header-title">Reset</h1>
+          <h1 className="login-header-title">{t('forgot.title')}</h1>
         </div>
         <div className="login-body" style={{ alignItems: 'center', justifyContent: 'center' }}>
           <CheckCircle2 size={56} style={{ color: '#5b7a5b', marginBottom: 12 }} />
           <p style={{ textAlign: 'center', color: 'var(--ink-soft)', fontSize: 14, margin: '0 0 24px' }}>
-            Your password has been reset successfully. You can now log in with your new password.
+            {t('forgot.successMsg')}
           </p>
           <button className="btn block" onClick={() => nav('/login', { replace: true })}>
-            Back to Login
+            {t('forgot.backToLogin')}
           </button>
         </div>
       </div>
@@ -104,30 +105,30 @@ export default function ForgotPassword() {
     <div className="login-page">
       <div className="login-header">
         <img className="login-header-img" src="assets/signin.png" alt="" />
-        <h1 className="login-header-title">Reset</h1>
+        <h1 className="login-header-title">{t('forgot.title')}</h1>
       </div>
 
       <div className="login-body">
         <div className="field">
-          <label>Email</label>
+          <label>{t('forgot.email')}</label>
           <input
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: '' })); setFormError('') }}
-            placeholder="you@example.com"
+            placeholder={t('login.emailPlaceholder')}
             autoComplete="email"
           />
           {errors.email && <span className="field-error">{errors.email}</span>}
         </div>
 
         <div className="field">
-          <label>Verification Code</label>
+          <label>{t('forgot.verifyCode')}</label>
           <div className="field-code">
             <input
               type="text"
               value={code}
               onChange={(e) => { setCode(e.target.value); setErrors((p) => ({ ...p, code: '' })); setFormError('') }}
-              placeholder="6-digit code"
+              placeholder={t('forgot.codePlaceholder')}
               maxLength={6}
             />
             <button
@@ -136,24 +137,24 @@ export default function ForgotPassword() {
               disabled={countdown > 0}
               type="button"
             >
-              {countdown > 0 ? `${countdown}s` : 'Send'}
+              {countdown > 0 ? `${countdown}s` : t('forgot.send')}
             </button>
           </div>
           {errors.code && <span className="field-error">{errors.code}</span>}
           {codeSent && !errors.code && (
-            <span className="field-hint">Demo code: {sentCodeRef.current}</span>
+            <span className="field-hint">{t('forgot.demoCode')}{sentCodeRef.current}</span>
           )}
         </div>
 
         <div className="field">
-          <label>New Password</label>
+          <label>{t('forgot.newPassword')}</label>
           <div className="field-pwd">
             <input
               type={showPwd ? 'text' : 'password'}
               value={newPassword}
               onChange={(e) => { setNewPassword(e.target.value); setErrors((p) => ({ ...p, password: '' })); setFormError('') }}
               onKeyDown={onKeyDown}
-              placeholder="At least 6 characters"
+              placeholder={t('forgot.passwordPlaceholder')}
               autoComplete="new-password"
             />
             <button
@@ -161,7 +162,7 @@ export default function ForgotPassword() {
               className="pwd-toggle"
               onClick={() => setShowPwd((v) => !v)}
               tabIndex={-1}
-              aria-label={showPwd ? 'Hide password' : 'Show password'}
+              aria-label={showPwd ? t('forgot.hidePassword') : t('forgot.showPassword')}
             >
               {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -173,12 +174,12 @@ export default function ForgotPassword() {
         {formSuccess && <div className="form-success">{formSuccess}</div>}
 
         <button className="btn block" onClick={handleReset} disabled={loading} style={{ marginTop: '12px' }}>
-          {loading ? <><Loader2 size={16} className="spin" /> Resetting…</> : 'Reset Password'}
+          {loading ? <><Loader2 size={16} className="spin" /> {t('forgot.resetting')}</> : t('forgot.resetBtn')}
         </button>
 
         <div className="login-footer">
-          <span className="login-footer-text">Remember your password?</span>
-          <span className="text-link" style={{ fontWeight: 600 }} onClick={() => nav('/login')}> Login</span>
+          <span className="login-footer-text">{t('forgot.rememberPassword')}</span>
+          <span className="text-link" style={{ fontWeight: 600 }} onClick={() => nav('/login')}> {t('forgot.login')}</span>
         </div>
       </div>
     </div>

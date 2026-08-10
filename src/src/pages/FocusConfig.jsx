@@ -6,10 +6,17 @@ import { requestMotionPermission } from '../useScreenDown'
 
 const DURATIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
 
+function localized(field, lang) {
+  if (field && typeof field === 'object' && (field.zh || field.en)) {
+    return field[lang] || field.en
+  }
+  return field
+}
+
 export default function FocusConfig() {
   const nav = useNavigate()
   const location = useLocation()
-  const { presets, currentMix, setCurrentMix, settings } = useApp()
+  const { presets, currentMix, setCurrentMix, settings, lang, t } = useApp()
   const [duration, setDuration] = useState(25)
   const [showPicker, setShowPicker] = useState(false)
   const [activeMix, setActiveMix] = useState(location.state?.mix || currentMix || presets[0] || null)
@@ -32,10 +39,6 @@ export default function FocusConfig() {
 
   const handleStart = () => {
     if (!activeMix) return
-    // 必须在用户手势同步调用栈中：
-    // 1) resume AudioContext —— iOS/Android 自动播放策略要求
-    // 2) 请求 DeviceMotion 权限 —— iOS 13+ 要求
-    // 否则到了 FocusSession 的 useEffect 里再调用会被浏览器拦截。
     try { resumeContext() } catch (e) { /* noop */ }
     if (settings.screenDown) {
       requestMotionPermission().catch(() => {})
@@ -46,7 +49,7 @@ export default function FocusConfig() {
 
   return (
     <div className="focus-config">
-      <div className="label-sm">Duration · Minutes</div>
+      <div className="label-sm">{t('focusConfig.duration')}</div>
       <div className="duration-picker" ref={pickerRef} onScroll={handleScroll}>
         <div className="pad" />
         {DURATIONS.map((d) => (
@@ -59,13 +62,19 @@ export default function FocusConfig() {
 
       <div className="mix-summary" onClick={() => setShowPicker(true)}>
         <div className="left">
-          <div className="name">{activeMix ? activeMix.name : 'Choose a music preset'}</div>
+          <div className="name">{activeMix ? activeMix.name : t('focusConfig.choosePreset')}</div>
           <div className="desc">
             {activeMix
-              ? [activeMix.mainMusicTitle, activeMix.bgNoise?.name, activeMix.binaural?.name + ' Wave']
+              ? [
+                  activeMix.mainMusicTitle && localized(activeMix.mainMusicTitle, lang),
+                  activeMix.bgNoise?.name && localized(activeMix.bgNoise.name, lang),
+                  activeMix.binaural?.name && (lang === 'zh'
+                    ? localized(activeMix.binaural.name, lang) + t('focusConfig.wave')
+                    : localized(activeMix.binaural.name, lang) + ' ' + t('focusConfig.wave'))
+                ]
                   .filter(Boolean)
                   .join(' · ')
-              : 'Tap to choose'}
+              : t('focusConfig.tapToChoose')}
           </div>
         </div>
         <div style={{ color: 'var(--ink-muted)' }}>›</div>
@@ -74,28 +83,28 @@ export default function FocusConfig() {
       {activeMix?.binaural && (
         <div className="headphone-hint">
           <img className="airpod airpod-left" src="assets/airpod.png" alt="" />
-          <span>Best with Headphones</span>
+          <span>{t('focusConfig.bestWithHeadphones')}</span>
           <img className="airpod airpod-right" src="assets/airpod.png" alt="" />
         </div>
       )}
 
       <div className="start-area">
         <button className="btn block" disabled={!activeMix} onClick={handleStart}>
-          Begin Focus
+          {t('focusConfig.beginFocus')}
         </button>
         <div style={{ textAlign: 'center', marginTop: 14 }}>
-          <span className="text-link" onClick={() => nav(-1)}>Cancel</span>
+          <span className="text-link" onClick={() => nav(-1)}>{t('focusConfig.cancel')}</span>
         </div>
       </div>
 
       {showPicker && (
         <div className="sheet-mask" onClick={() => setShowPicker(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h4>Select Mix</h4>
+            <h4>{t('focusConfig.selectMix')}</h4>
             {presets.length === 0 ? (
               <div className="empty">
-                <p>No presets available, please create one in the mix space</p>
-                <button className="btn" onClick={() => { setShowPicker(false); nav('/mixer') }}>Mix Space</button>
+                <p>{t('focusConfig.noPresets')}</p>
+                <button className="btn" onClick={() => { setShowPicker(false); nav('/mixer') }}>{t('focusConfig.mixSpace')}</button>
               </div>
             ) : (
               presets.map((p) => (
@@ -103,14 +112,20 @@ export default function FocusConfig() {
                   <div className="left">
                     <div>{p.name}</div>
                     <div className="desc">
-                      {[p.mainMusicTitle, p.bgNoise?.name, p.binaural?.name + ' Wave'].filter(Boolean).join(' · ')}
+                      {[
+                        p.mainMusicTitle && localized(p.mainMusicTitle, lang),
+                        p.bgNoise?.name && localized(p.bgNoise.name, lang),
+                        p.binaural?.name && (lang === 'zh'
+                          ? localized(p.binaural.name, lang) + t('focusConfig.wave')
+                          : localized(p.binaural.name, lang) + ' ' + t('focusConfig.wave'))
+                      ].filter(Boolean).join(' · ')}
                     </div>
                   </div>
                 </div>
               ))
             )}
             <div className="opt" onClick={() => { setShowPicker(false); nav('/mixer') }}>
-              <div className="left"><div>Mix Space →</div></div>
+              <div className="left"><div>{t('focusConfig.mixSpace')} →</div></div>
             </div>
           </div>
         </div>
