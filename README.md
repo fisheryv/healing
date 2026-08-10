@@ -68,7 +68,7 @@ d. 根据专注时长估算画笔的推进速度基准，使画作在计时结�
 - **忘记密码**：通过注册时设置的安全问题验证身份后重置密码，无需邮件/短信验证码。
 - **第三方登录**：Google / Apple ID / 微信入口（当前为占位，暂未接入真实后端）。
 
-> 当前版本为纯前端 Demo，所有账户数据存储在浏览器 localStorage 中，密码和安全问题答案均经过哈希处理。后续接入后端后可迁移至服务端。
+> 账户系统基于 PocketBase（JWT 鉴权 + SQLite 存储），密码由 PB 内置 bcrypt 哈希，安全问题答案在前端 SHA-256 后存入 PB。业务数据（artworks / presets / favorites）的迁移进行中。
 
 ## 设计语言
 
@@ -84,12 +84,13 @@ d. 根据专注时长估算画笔的推进速度基准，使画作在计时结�
 Demo 实现位于 [`src/`](src/) 目录，基于以下技术栈：
 
 - **React 18** + **Vite** + **React Router v6**
+- **PocketBase**：后端（Auth + SQLite + REST API + Admin UI）
 - **Web Audio API**：音频合成与混音（纯噪音和双耳节拍实时合成，无需音频文件）
-- **HTML5 Canvas 2D API**：水墨（Suminagashi）渲染引擎实时绘制
+- **Three.js + 自定义 GLSL ShaderMaterial**：水墨（Suminagashi）流体模拟渲染引擎
 - **lucide-react** 图标库
 - 设计风格：极简主义、低饱和度配色、衬线字体（Cormorant Garamond / Noto Serif SC）
-- 全局状态：React Context + localStorage 持久化（用户、收藏、混音方案、画作、设置、账户库）
-- 数据存储：浏览器 localStorage（无后端依赖）
+- 全局状态：React Context（user 由 PocketBase authStore 派生，业务数据迁移中）
+- 鉴权：PocketBase JWT（7 天有效期，自动续期），token 存 localStorage
 
 ## 目录结构
 
@@ -100,6 +101,10 @@ Healing/
 │   ├── 希音_Healing_App-产品需求文档.md
 │   ├── 希音_Healing_App-原始需求.md
 │   └── audio-files-guide.md            # 音频文件放置指南
+├── backend/                             # PocketBase 后端
+│   ├── README.md                        # 后端启动说明
+│   ├── pb_migrations/                  # 数据库迁移脚本（提交进 git）
+│   └── pb_data/                        # SQLite 数据库（gitignore，不上传）
 └── src/                                 # 可交互 H5 产品 Demo
     ├── index.html
     ├── package.json
@@ -108,7 +113,8 @@ Healing/
     └── src/
         ├── App.jsx                      # 路由与外壳
         ├── main.jsx
-        ├── store.jsx                    # 全局状态 + 本地账户系统
+        ├── store.jsx                    # 全局状态（user 由 PB 派生）
+        ├── api.js                       # PocketBase SDK 封装
         ├── data.js                      # 静态演示数据（音乐、噪音、博客、摘录）
         ├── i18n.js                      # 多语言（中/英）
         ├── audioEngine.js               # Web Audio 混音引擎
@@ -139,13 +145,26 @@ Healing/
 
 ## 启动方式
 
+### 后端（PocketBase）
+
 ```bash
-cd src
-npm install
-npm run dev
+cd backend
+pocketbase serve --http=0.0.0.0:8090 --origins="*"
 ```
 
-默认会在 `http://localhost:5173/` 启动。建议在浏览器中开启移动端调试视图（375 × 812 等）以获得最佳观感。
+首次启动会自动建库 + 跑迁移。详见 [`backend/README.md`](backend/README.md)。
+
+### 前端
+
+```bash
+cd src
+pnpm install
+pnpm dev
+```
+
+访问 `http://localhost:5173/`。**前后端都要启动**，端口固定（vite 5173 / PB 8090）。
+
+> 手机 / 局域网设备测试：用 `http://<你的-IP>:5173/`，但 dev 阶段建议用 `localhost`（`crypto.subtle` 需要 secure context）。
 
 ## Demo 演示要点
 

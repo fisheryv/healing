@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
-import { useApp } from '../store.jsx'
+import { useApp, auth } from '../store.jsx'
 import { useNavigate } from 'react-router-dom'
 
 // 52 周 × 7 天
@@ -280,7 +280,7 @@ export default function Profile() {
   }
 
   const confirmLogout = () => {
-    setUser(null)
+    auth.logout()
     setShowLogoutConfirm(false)
     nav('/login', { replace: true })
   }
@@ -290,21 +290,20 @@ export default function Profile() {
     setEditingName(true)
   }
 
-  const saveName = () => {
-    if (nameDraft.trim()) {
-      setUser({ ...user, nickname: nameDraft.trim() })
-    }
+  const saveName = async () => {
+    const name = nameDraft.trim()
     setEditingName(false)
+    if (!name) return
+    const res = await auth.updateProfile({ nickname: name })
+    if (res.ok) setUser(res.user)
   }
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      setUser({ ...user, avatar: ev.target.result })
-    }
-    reader.readAsDataURL(file)
+    auth.updateProfile({ avatar: file }).then((res) => {
+      if (res.ok) setUser(res.user)
+    })
   }
 
   const avatarSrc = user?.avatar || 'assets/avatar.png'

@@ -50,27 +50,26 @@ export default function SettingsPage() {
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 500))
-    const res = email
-      ? auth.changePassword({ email, oldPassword: oldPwd, newPassword: newPwd, type: 'email' })
-      : { ok: true }
+    const res = await auth.changePassword({ oldPassword: oldPwd, newPassword: newPwd })
     setLoading(false)
     if (!res.ok) {
       flashToast(t('settings.currentPasswordIncorrect'), 'error')
       return
     }
+    // PB 改密码会让旧 token 失效，需要重新登录
     flashToast(t('settings.passwordChanged'), 'success')
     setOldPwd('')
     setNewPwd('')
     setConfirmPwd('')
+    setTimeout(() => {
+      auth.logout()
+      nav('/login', { replace: true })
+    }, 1200)
   }
 
   const handleDeactivate = () => {
-    if (email) {
-      auth.clearRemember()
-      bindings.clear(email)
-    }
-    setUser(null)
+    auth.clearRemember()
+    auth.logout()
     nav('/login', { replace: true })
   }
 

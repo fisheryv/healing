@@ -1,3 +1,5 @@
 .od-skills/
 *-bak/
 .codebuddy/
+.DS_Store
+.idea/

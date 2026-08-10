@@ -26,8 +26,12 @@ const FULLSCREEN = ['/onboarding', '/login', '/register', '/forgot', '/nickname-
 const PROTECTED = ['/home', '/library', '/mixer', '/gallery', '/profile', '/focus/config', '/focus/session', '/settings', '/about']
 
 function RequireAuth({ children }) {
-  const { user } = useApp()
+  const { user, authReady } = useApp()
   const location = useLocation()
+  // 鉴权初始化未完成前显示加载态，避免误跳 /login
+  if (!authReady) {
+    return <div className="auth-loading">Loading…</div>
+  }
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }

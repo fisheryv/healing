@@ -34,7 +34,7 @@ export default function SignUp() {
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { setUser, t } = useApp()
+  const { t } = useApp()
   const nav = useNavigate()
 
   const filteredCountries = COUNTRY_CODES.filter((c) =>
@@ -48,11 +48,9 @@ export default function SignUp() {
     if (tab === 'email') {
       if (!email) errs.account = t('signup.emailRequired')
       else if (!validateEmail(email)) errs.account = t('signup.emailInvalid')
-      else if (auth.exists(email, 'email')) errs.account = t('signup.emailExists')
     } else {
       if (!phone) errs.account = t('signup.phoneRequired')
       else if (!validatePhone(phone)) errs.account = t('signup.phoneInvalid')
-      else if (auth.exists(`${countryCode}${phone}`, 'phone')) errs.account = t('signup.phoneExists')
     }
 
     if (!nickname.trim()) errs.nickname = t('signup.nicknameRequired')
@@ -72,14 +70,15 @@ export default function SignUp() {
   const handleSignUp = async () => {
     setFormError('')
     if (!validate()) return
+    if (tab === 'phone') {
+      setFormError(t('signup.phoneNotSupported'))
+      return
+    }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 600))
-    const res = auth.register({
-      email: tab === 'email' ? email : '',
-      phone: tab === 'phone' ? `${countryCode}${phone}` : '',
+    const res = await auth.register({
+      email,
       nickname: nickname.trim(),
       password,
-      type: tab,
       recoveryQuestion: recoveryQuestion.trim(),
       recoveryAnswer: recoveryAnswer.trim(),
     })
@@ -89,7 +88,6 @@ export default function SignUp() {
       return
     }
     // 跳转到昵称设置页（首次登录）
-    setUser({ nickname: res.user.nickname, account: res.user.account || res.user.email || res.user.phone })
     nav('/nickname-setup', { replace: true, state: { justRegistered: true } })
   }
 

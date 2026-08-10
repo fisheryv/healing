@@ -31,7 +31,7 @@ export default function Login() {
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
-  const { setUser, t } = useApp()
+  const { t } = useApp()
   const nav = useNavigate()
   const pwdRef = useRef(null)
 
@@ -57,23 +57,19 @@ export default function Login() {
   const handleLogin = async () => {
     setFormError('')
     if (!validate()) return
+    if (tab === 'phone') {
+      setFormError(t('login.thirdPartySoon'))
+      return
+    }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 600))
-    const accountId = tab === 'phone' ? `${countryCode}${phone}` : email
-    const res = auth.login({
-      email: tab === 'email' ? email : '',
-      phone: tab === 'phone' ? `${countryCode}${phone}` : '',
-      password,
-      type: tab,
-    })
+    const res = await auth.login({ email, password })
     setLoading(false)
     if (!res.ok) {
       setFormError(res.error)
       return
     }
-    if (remember) auth.saveRemember(accountId)
+    if (remember) auth.saveRemember(email)
     else auth.clearRemember()
-    setUser({ nickname: res.user.nickname, account: res.user.account || accountId })
     nav('/home', { replace: true })
   }
 

@@ -15,7 +15,7 @@ export default function ForgotPassword() {
   // 步骤：1 输入邮箱 → 2 回答安全问题 → 3 设置新密码
   const [step, setStep] = useState(1)
   const [question, setQuestion] = useState('')
-  const { setUser, t } = useApp()
+  const { t } = useApp()
   const nav = useNavigate()
 
   // 步骤 1：提交邮箱，拉取该账号的安全问题
@@ -28,8 +28,7 @@ export default function ForgotPassword() {
     if (Object.keys(errs).length > 0) return
 
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 400))
-    const res = auth.getRecoveryQuestion({ email, type: 'email' })
+    const res = await auth.getRecoveryQuestion({ email })
     setLoading(false)
     if (!res.ok) {
       setErrors({ email: t('forgot.emailNotFound') })
@@ -57,21 +56,14 @@ export default function ForgotPassword() {
     setFormError('')
     if (!validate()) return
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 600))
-    const res = auth.resetPassword({ email, password: newPassword, recoveryAnswer: recoveryAnswer.trim(), type: 'email' })
+    const res = await auth.resetPassword({ email, newPassword, recoveryAnswer: recoveryAnswer.trim() })
     setLoading(false)
     if (!res.ok) {
       setErrors({ recoveryAnswer: t('forgot.answerIncorrect') })
       return
     }
-    // 自动登录：写入 user 状态后跳转首页
-    if (res.user) {
-      setUser({ nickname: res.user.nickname, account: res.user.account || res.user.email })
-      setDone(true)
-      setTimeout(() => nav('/home', { replace: true }), 1500)
-    } else {
-      setDone(true)
-    }
+    setDone(true)
+    setTimeout(() => nav('/home', { replace: true }), 1500)
   }
 
   const onKeyDown = (e) => {

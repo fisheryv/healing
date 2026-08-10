@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useApp } from '../store.jsx'
+import { useApp, auth } from '../store.jsx'
 import { Loader2 } from 'lucide-react'
 
 export default function NicknameSetup() {
@@ -24,6 +24,14 @@ export default function NicknameSetup() {
     reader.readAsDataURL(file)
   }
 
+  const saveProfile = async (name) => {
+    const updates = { nickname: name }
+    if (avatarPreview && avatarPreview.startsWith('data:')) updates.avatar = avatarPreview
+    const res = await auth.updateProfile(updates)
+    if (res.ok) setUser(res.user)
+    return res
+  }
+
   const handleComplete = async () => {
     setError('')
     const name = nickname.trim()
@@ -36,18 +44,20 @@ export default function NicknameSetup() {
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 400))
-    setUser({ ...user, nickname: name, avatar: avatarPreview })
+    const res = await saveProfile(name)
     setLoading(false)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
     nav('/home', { replace: true })
   }
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     // 跳过时使用默认昵称：用户 + 账号后4位
     const account = user?.account || ''
     const tail = account.replace(/\D/g, '').slice(-4) || '0000'
-    const defaultName = `用户${tail}`
-    setUser({ ...user, nickname: defaultName, avatar: avatarPreview })
+    await saveProfile(`用户${tail}`)
     nav('/home', { replace: true })
   }
 

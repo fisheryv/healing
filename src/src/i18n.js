@@ -99,6 +99,7 @@ const translations = {
     phoneRequired: { zh: '请输入手机号。', en: 'Phone number is required.' },
     phoneInvalid: { zh: '请输入有效的手机号。', en: 'Please enter a valid phone number.' },
     phoneExists: { zh: '该手机号已被注册。', en: 'This phone number is already registered.' },
+    phoneNotSupported: { zh: '暂不支持手机号注册，请使用邮箱。', en: 'Phone sign-up is not supported yet, please use email.' },
     countryCode: { zh: '+86', en: '+86' },
     nickname: { zh: '昵称', en: 'Nickname' },
     nicknamePlaceholder: { zh: '你的显示名称', en: 'Your display name' },
