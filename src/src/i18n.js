@@ -390,6 +390,14 @@ const translations = {
     saveAndStart: { zh: '保存并开始', en: 'Save & Start' },
     justStart: { zh: '直接开始', en: 'Just Start' },
     untitled: { zh: '未命名', en: 'Untitled' },
+    binauralHint: { zh: '与氛围类音乐搭配更佳', en: 'Best paired with Ambient music' },
+    aiAssist: { zh: 'AI 智能配置', en: 'AI Smart Configure' },
+    aiAssistTitle: { zh: 'AI 智能配置助手', en: 'AI Smart Configure Assistant' },
+    aiAssistDesc: { zh: '告诉 AI 你的需求或心情，它会自动为你配置主音乐、背景噪音和双耳节拍。', en: 'Tell the AI your needs or mood, and it will automatically configure the main music, background noise, and binaural beats for you.' },
+    aiPlaceholder: { zh: '如：我想专注阅读，需要平静的氛围…', en: 'e.g. I want to focus on reading, need a calm atmosphere...' },
+    aiThinking: { zh: '思考中…', en: 'Thinking…' },
+    aiApplied: { zh: 'AI 已为你配置 ✓', en: 'AI configured ✓' },
+    aiError: { zh: '配置失败', en: 'Configuration failed' },
   },
 
   // ====== Focus Session (key texts) ======

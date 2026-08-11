@@ -1851,6 +1851,49 @@ a {
 
 .mixer-actions .btn { flex: 1; }
 
+/* AI 智能配置入口按钮 */
+.ai-assist-row {
+  padding: 0 22px;
+  margin-top: 6px;
+}
+
+.ai-assist-row .btn {
+  height: 42px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+}
+
+/* AI 配置对话框 */
+.ai-modal {
+  max-width: 380px;
+}
+
+.ai-textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  background: var(--bg);
+  color: var(--ink);
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+.ai-textarea:focus {
+  border-color: var(--ink);
+}
+
+.ai-error {
+  color: #9a3f3c;
+  font-size: 12px;
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
 /* 氛围音独立音量行 */
 .atmos-row {
   display: flex;

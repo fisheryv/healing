@@ -1,0 +1,46 @@
+name: SSH Deploy to Server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 115.29.231.49 >> ~/.ssh/known_hosts
+
+      - name: Sync project files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 115.29.231.49
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: "/opt/healing"
+          rm: true
+
+      - name: Execute deploy script on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 115.29.231.49
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/healing
+            chmod +x deploy.sh
+            ./deploy.sh \
+              --port=80 \
+              --pb-port=8090 \
+              --pb-admin-email=admin@healing.local \
+              --pb-admin-password=${{ secrets.PB_ADMIN_PASSWORD }}
