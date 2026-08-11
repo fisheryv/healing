@@ -1,26 +1,28 @@
 /**
- * store.jsx — 全局状态（Day 2 改造：auth 改用 PocketBase）
+ * store.jsx — 全局状态（Day 3 改造：业务数据迁移到 PocketBase）
  *
  * 职责：
  *   - 用 React Context 暴露 useApp() 给所有页面
  *   - user 状态从 PocketBase authStore 派生（订阅 onChange）
- *   - favorites / presets / artworks 仍走 localStorage（Day 3 再迁 PB）
+ *   - favorites / presets / artworks 走 PB collections：登录时拉取、变更时乐观更新 + 异步写回
+ *   - onboardingSeen / settings 仍走 localStorage（设备本地偏好）
  *   - 重新导出 auth / bindings / validate* 从 ./api.js（保持向后兼容）
- *
- * Day 3 会扩展：
- *   - favorites / presets / artworks 改为同步到 PB collections
  */
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
-import { auth, bindings, validateEmail, validatePhone, validatePassword, onAuthChange, initAuth } from './api.js'
-import { translate, DEFAULT_LANG } from './i18n.js'
+import {
+  auth, bindings, validateEmail, validatePhone, validatePassword,
+  onAuthChange, initAuth,
+  favorites as favoritesApi, presets as presetsApi, artworks as artworksApi,
+} from './api.js'
+import { translate } from './i18n.js'
 
 const AppContext = createContext(null)
 
 const STORAGE_KEY = 'healing_app_state_v1'
 const LANG_KEY = 'healing_app_lang_v1'
 
-// ====== localStorage 持久化（仅业务数据） ======
+// ====== localStorage 持久化（仅本地偏好：onboardingSeen / settings） ======
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -39,36 +41,6 @@ function saveState(state) {
     console.warn('[store] saveState failed:', e)
   }
 }
-
-// 默认混音预设
-const DEFAULT_PRESETS = [
-  {
-    id: 'p1',
-    name: 'Glass Rain',
-    mainMusicId: 'm1',
-    mainMusicTitle: 'Glass Rain',
-    mainVolume: 0.7,
-    bgNoise: { id: 'rain', name: 'Rain' },
-    bgVolume: 0.5,
-    ambient: [],
-    binaural: { id: 'alpha', name: 'Alpha', range: '8–13 Hz' },
-    binauralVolume: 0.3,
-    createdAt: Date.now() - 86400000
-  },
-  {
-    id: 'p2',
-    name: 'Still Dance',
-    mainMusicId: 'm2',
-    mainMusicTitle: 'Still Dance',
-    mainVolume: 0.6,
-    bgNoise: null,
-    bgVolume: 0.4,
-    ambient: [{ id: 'pages', name: 'Page Turning', volume: 0.4 }],
-    binaural: null,
-    binauralVolume: 0,
-    createdAt: Date.now() - 3 * 86400000
-  }
-]
 
 export function AppProvider({ children }) {
   const persisted = loadState()
@@ -99,9 +71,9 @@ export function AppProvider({ children }) {
   }, [])
 
   const [onboardingSeen, setOnboardingSeen] = useState(persisted?.onboardingSeen ?? false)
-  const [favorites, setFavorites] = useState(persisted?.favorites ?? [])
-  const [presets, setPresets] = useState(persisted?.presets ?? DEFAULT_PRESETS)
-  const [artworks, setArtworks] = useState(persisted?.artworks ?? [])
+  const [favorites, setFavorites] = useState([])
+  const [presets, setPresets] = useState([])
+  const [artworks, setArtworks] = useState([])
   const [currentMix, setCurrentMix] = useState(persisted?.currentMix ?? null)
   const [settings, setSettings] = useState(persisted?.settings ?? {
     screenDown: true,
@@ -112,6 +84,8 @@ export function AppProvider({ children }) {
 
   // 鉴权初始化是否完成（避免 RequireAuth 在 initAuth 完成前误判）
   const [authReady, setAuthReady] = useState(false)
+  // 业务数据是否已从 PB 加载完成（避免 ArtworkDetail/Gallery 闪现 not-found / empty）
+  const [dataReady, setDataReady] = useState(false)
 
   const markOnboardingSeen = useCallback(() => setOnboardingSeen(true), [])
 
@@ -120,19 +94,53 @@ export function AppProvider({ children }) {
     try { localStorage.setItem(LANG_KEY, newLang) } catch (e) {}
   }, [])
 
-  // 业务数据持久化（user 不再持久化，由 PB 负责）
+  // 本地偏好持久化（业务数据由 PB 负责，不再写 localStorage）
   useEffect(() => {
-    saveState({ onboardingSeen, favorites, presets, artworks, settings })
-  }, [onboardingSeen, favorites, presets, artworks, settings])
+    saveState({ onboardingSeen, settings })
+  }, [onboardingSeen, settings])
+
+  // 业务数据同步：登录时从 PB 拉取，登出时清空
+  useEffect(() => {
+    if (!authReady) return
+    if (!user) {
+      setFavorites([])
+      setPresets([])
+      setArtworks([])
+      setDataReady(false)
+      return
+    }
+    let cancelled = false
+    Promise.all([favoritesApi.list(), presetsApi.list(), artworksApi.list()])
+      .then(([f, p, a]) => {
+        if (cancelled) return
+        setFavorites(f.ok ? f.items : [])
+        setPresets(p.ok ? p.items : [])
+        setArtworks(a.ok ? a.items : [])
+        setDataReady(true)
+      })
+      .catch(() => { if (!cancelled) setDataReady(true) })
+    return () => { cancelled = true }
+  }, [authReady, user?.id])
 
   const toggleFavorite = useCallback((id) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
+    // 乐观更新本地状态
+    setFavorites((prev) => {
+      const willAdd = !prev.includes(id)
+      // 后台异步写 PB（失败只 warn，下次 fetch 会自动修正）
+      if (willAdd) favoritesApi.add(id).catch((e) => console.warn('[favorites.add]', e))
+      else favoritesApi.remove(id).catch((e) => console.warn('[favorites.remove]', e))
+      return willAdd ? [...prev, id] : prev.filter((x) => x !== id)
+    })
   }, [])
 
-  const addArtwork = useCallback((art) => {
-    const newArt = { ...art, id: 'a' + Date.now() }
+  const addArtwork = useCallback(async (art) => {
+    // 等 PB 创建成功后再插入本地（保证 id + previewUrl 是真实的，避免 Gallery 竞态）
+    const res = await artworksApi.create(art, art.previewUrl)
+    if (!res.ok) {
+      console.warn('[addArtwork]', res.error)
+      return null
+    }
+    const newArt = res.artwork
     setArtworks((prev) => {
       const abandoned = newArt.status !== 'complete'
       if (abandoned) return [newArt, ...prev]
@@ -147,17 +155,35 @@ export function AppProvider({ children }) {
 
   const deleteArtwork = useCallback((id) => {
     setArtworks((prev) => prev.filter((a) => a.id !== id))
+    artworksApi.remove(id).catch((e) => console.warn('[artworks.remove]', e))
   }, [])
 
   const savePreset = useCallback((preset) => {
     setPresets((prev) => {
-      const existing = prev.findIndex((p) => p.name === preset.name)
-      if (existing >= 0) {
+      const existingIdx = prev.findIndex((p) => p.name === preset.name)
+      if (existingIdx >= 0) {
+        // 覆盖已有预设
+        const existing = prev[existingIdx]
+        const updated = { ...preset, id: existing.id, createdAt: Date.now() }
         const copy = [...prev]
-        copy[existing] = { ...preset, id: copy[existing].id, createdAt: Date.now() }
+        copy[existingIdx] = updated
+        // 后台更新 PB
+        presetsApi.update(existing.id, preset).then((res) => {
+          if (res.ok) {
+            setPresets((cur) => cur.map((p) => (p.id === existing.id ? { ...res.preset, id: existing.id } : p)))
+          } else console.warn('[presets.update]', res.error)
+        })
         return copy
       }
-      return [{ ...preset, id: 'p' + Date.now(), createdAt: Date.now() }, ...prev]
+      // 新建预设：先乐观插入临时记录，PB 成功后替换为真实记录
+      const tempId = 'tmp_' + Date.now()
+      const optimistic = { ...preset, id: tempId, createdAt: Date.now() }
+      presetsApi.create(preset).then((res) => {
+        if (res.ok) {
+          setPresets((cur) => cur.map((p) => (p.id === tempId ? res.preset : p)))
+        } else console.warn('[presets.create]', res.error)
+      })
+      return [optimistic, ...prev]
     })
   }, [])
 
@@ -167,6 +193,7 @@ export function AppProvider({ children }) {
 
   const deletePreset = useCallback((id) => {
     setPresets((prev) => prev.filter((p) => p.id !== id))
+    presetsApi.remove(id).catch((e) => console.warn('[presets.remove]', e))
   }, [])
 
   const recordQuote = useCallback((quoteEn) => {
@@ -188,11 +215,12 @@ export function AppProvider({ children }) {
       recentQuotes, recordQuote,
       lang, setLang: changeLang,
       authReady,
+      dataReady,
       t: (key, params) => translate(lang, key, params)
     }),
     [user, onboardingSeen, markOnboardingSeen, favorites, presets, artworks, currentMix, settings,
      toggleFavorite, addArtwork, deleteArtwork, savePreset, deletePreset, isPresetNameExist,
-     recentQuotes, recordQuote, lang, changeLang, authReady]
+     recentQuotes, recordQuote, lang, changeLang, authReady, dataReady]
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
@@ -206,4 +234,5 @@ export function useApp() {
 
 // 重新导出 PB 封装模块（保持页面代码不变）
 export { auth, bindings, validateEmail, validatePhone, validatePassword }
+export { favorites as favoritesApi, presets as presetsApi, artworks as artworksApi } from './api.js'
 export { pb } from './api.js'

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../store.jsx'
 
 export default function Gallery() {
-  const { artworks, deleteArtwork, t } = useApp()
+  const { artworks, deleteArtwork, t, dataReady } = useApp()
   const nav = useNavigate()
   const loc = useLocation()
   const [filter, setFilter] = useState('all')
@@ -101,7 +101,11 @@ export default function Gallery() {
         <div className={'tab-item' + (filter === 'partial' ? ' active' : '')} onClick={() => setFilter('partial')}>{t('gallery.tabPartial')}</div>
       </div>
 
-      {filtered.length === 0 ? (
+      {!dataReady ? (
+        <div className="empty">
+          <p>{t('common.loading')}</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="empty">
           <div className="icon" />
           <p>{t('gallery.empty').split('\n').map((line, i) => (

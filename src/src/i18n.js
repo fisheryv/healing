@@ -39,6 +39,7 @@ const translations = {
     guest: { zh: '访客', en: 'guest' },
     minRead: { zh: '分钟阅读', en: 'min read' },
     articles: { zh: '篇文章', en: 'Articles' },
+    loading: { zh: '加载中…', en: 'Loading…' },
   },
 
   // ====== Onboarding ======

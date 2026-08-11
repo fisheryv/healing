@@ -1,16 +1,16 @@
 /**
  * api.js — PocketBase 后端封装
  *
- * 封装 SDK 实例 + auth / bindings 模块。
- * 业务模块（artworks / presets / favorites）后续在 Day 3 添加。
+ * 封装 SDK 实例 + auth / bindings / favorites / presets / artworks 模块。
  *
  * 重要约定：
- *   - 返回结构尽量与旧 localStorage 模拟一致：{ ok: true, user } 或 { ok: false, error }
+ *   - 返回结构尽量与旧 localStorage 模拟一致：{ ok: true, ... } 或 { ok: false, error }
  *   - recoveryAnswer 在前端先 SHA-256 哈希后再传给后端
  *   - 旧 token 自动从 localStorage 恢复
  */
 
 import PocketBase from 'pocketbase'
+import { noiseOptions, binauralOptions } from './data.js'
 
 // ====== SDK 实例 ======
 // dev 环境走相对路径，由 vite proxy 转发到 PocketBase。
@@ -278,6 +278,237 @@ export const bindings = {
   },
   clear(email) {
     return { ok: true }
+  },
+}
+
+// ====== 业务数据 mapper（favorites / presets / artworks） ======
+
+/** 查找噪音选项（pure + ambient 合并）by id */
+function findNoiseOption(id) {
+  if (!id) return null
+  return noiseOptions.pure.find((n) => n.id === id) || noiseOptions.ambient.find((n) => n.id === id) || null
+}
+
+/** 查找双耳节拍选项 by id */
+function findBinauralOption(id) {
+  if (!id) return null
+  return binauralOptions.find((b) => b.id === id) || null
+}
+
+/** 把 PB preset record 映射成前端 preset 对象 */
+function mapPreset(record) {
+  if (!record) return null
+  const noise = findNoiseOption(record.bgNoiseId)
+  const binaural = findBinauralOption(record.binauralId)
+  return {
+    id: record.id,
+    name: record.name || '',
+    mainMusicId: record.mainMusicId || '',
+    mainMusicTitle: record.mainMusicTitle || '',
+    mainVolume: record.mainVolume ?? 0,
+    bgNoise: noise ? { id: noise.id, name: noise.name } : null,
+    bgVolume: record.bgVolume ?? 0,
+    ambient: Array.isArray(record.ambient) ? record.ambient : [],
+    binaural: binaural ? { id: binaural.id, name: binaural.name, range: binaural.range } : null,
+    binauralVolume: record.binauralVolume ?? 0,
+    createdAt: record.created ? new Date(record.created).getTime() : Date.now(),
+  }
+}
+
+/** 把前端 preset 对象映射成 PB record 字段 */
+function presetToPB(preset, userId) {
+  return {
+    user: userId,
+    name: preset.name || '',
+    mainMusicId: preset.mainMusicId || '',
+    mainMusicTitle: preset.mainMusicTitle || '',
+    mainVolume: preset.mainVolume ?? 0,
+    bgNoiseId: preset.bgNoise?.id || '',
+    bgVolume: preset.bgVolume ?? 0,
+    ambient: Array.isArray(preset.ambient) ? preset.ambient : [],
+    binauralId: preset.binaural?.id || '',
+    binauralVolume: preset.binauralVolume ?? 0,
+  }
+}
+
+/** 把 PB artwork record 映射成前端 artwork 对象 */
+function mapArtwork(record) {
+  if (!record) return null
+  let mixMeta = {}
+  try {
+    mixMeta = typeof record.mix === 'string' ? JSON.parse(record.mix) : (record.mix || {})
+  } catch (e) { mixMeta = {} }
+  let previewUrl = null
+  if (record.image) {
+    try { previewUrl = pb.files.getURL(record, record.image) } catch (e) { /* noop */ }
+  }
+  const quoteEn = record.quoteEn || ''
+  const quoteCn = record.quoteCn || ''
+  return {
+    id: record.id,
+    title: mixMeta.title || '',
+    curveType: record.curveType || '',
+    previewUrl,
+    status: record.status || 'complete',
+    duration: record.duration ?? 0,
+    mixName: mixMeta.mixName || '',
+    interruptReason: mixMeta.interruptReason || '',
+    quote: (quoteEn || quoteCn) ? { en: quoteEn, cn: quoteCn } : undefined,
+    elapsedMin: record.elapsed ? record.elapsed / 60 : undefined,
+    createdAt: record.created ? new Date(record.created).getTime() : Date.now(),
+  }
+}
+
+// ====== favorites 模块 ======
+export const favorites = {
+  /** 列出当前用户所有收藏，返回 musicId 数组 */
+  async list() {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      const records = await pb.collection('favorites').getFullList({ sort: '-created' })
+      return { ok: true, items: records.map((r) => r.musicId) }
+    } catch (e) {
+      return { ok: false, error: errMsg(e) }
+    }
+  },
+
+  /** 收藏一首音乐（幂等：已存在也返回 ok） */
+  async add(musicId) {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      await pb.collection('favorites').create({ user: id, musicId })
+      return { ok: true }
+    } catch (e) {
+      // UNIQUE 冲突 = 已收藏，当成功处理（幂等）
+      const data = e?.response?.data
+      if (data && Object.values(data).some((v) => v && v.code === 'validation_not_unique')) {
+        return { ok: true }
+      }
+      return { ok: false, error: errMsg(e) }
+    }
+  },
+
+  /** 取消收藏（按 musicId 查找并删除，幂等） */
+  async remove(musicId) {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      const rec = await pb.collection('favorites').getFirstListItem(
+        `musicId="${musicId.replace(/"/g, '\\"')}"`
+      )
+      await pb.collection('favorites').delete(rec.id)
+      return { ok: true }
+    } catch (e) {
+      // 不存在也算成功（幂等）
+      if (e?.status === 404) return { ok: true }
+      return { ok: false, error: errMsg(e) }
+    }
+  },
+}
+
+// ====== presets 模块 ======
+export const presets = {
+  async list() {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      const records = await pb.collection('presets').getFullList({ sort: '-created' })
+      return { ok: true, items: records.map(mapPreset) }
+    } catch (e) {
+      return { ok: false, error: errMsg(e) }
+    }
+  },
+
+  async create(preset) {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      const record = await pb.collection('presets').create(presetToPB(preset, id))
+      return { ok: true, preset: mapPreset(record) }
+    } catch (e) {
+      return { ok: false, error: errMsg(e) }
+    }
+  },
+
+  async update(presetId, preset) {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      const record = await pb.collection('presets').update(presetId, presetToPB(preset, id))
+      return { ok: true, preset: mapPreset(record) }
+    } catch (e) {
+      return { ok: false, error: errMsg(e) }
+    }
+  },
+
+  async remove(presetId) {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      await pb.collection('presets').delete(presetId)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: errMsg(e) }
+    }
+  },
+}
+
+// ====== artworks 模块 ======
+export const artworks = {
+  async list() {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      const records = await pb.collection('artworks').getFullList({ sort: '-created' })
+      return { ok: true, items: records.map(mapArtwork) }
+    } catch (e) {
+      return { ok: false, error: errMsg(e) }
+    }
+  },
+
+  /** 创建画作：dataUrl 是 WebGL canvas 的 PNG dataURL，转 Blob 后用 FormData 上传 */
+  async create(art, dataUrl) {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      const mixMeta = JSON.stringify({
+        title: art.title || '',
+        mixName: art.mixName || '',
+        interruptReason: art.interruptReason || '',
+      })
+      const form = new FormData()
+      form.append('user', id)
+      form.append('duration', String(art.duration ?? 0))
+      form.append('curveType', art.curveType || '')
+      form.append('mix', mixMeta)
+      form.append('status', art.status || 'complete')
+      form.append('quoteEn', art.quote?.en || '')
+      form.append('quoteCn', art.quote?.cn || '')
+      form.append('elapsed', String(art.elapsedMin ? Math.round(art.elapsedMin * 60) : 0))
+      if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+        const blob = await (await fetch(dataUrl)).blob()
+        form.append('image', blob, 'artwork.png')
+      } else {
+        return { ok: false, error: 'artwork image is required' }
+      }
+      const record = await pb.collection('artworks').create(form)
+      return { ok: true, artwork: mapArtwork(record) }
+    } catch (e) {
+      return { ok: false, error: errMsg(e) }
+    }
+  },
+
+  async remove(artworkId) {
+    try {
+      const id = pb.authStore.model?.id
+      if (!id) return { ok: false, error: 'Not logged in' }
+      await pb.collection('artworks').delete(artworkId)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: errMsg(e) }
+    }
   },
 }
 

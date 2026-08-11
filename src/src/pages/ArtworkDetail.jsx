@@ -110,7 +110,7 @@ function makePath(seed, curve, savedParams) {
 export default function ArtworkDetail() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { artworks, lang, t } = useApp()
+  const { artworks, lang, t, dataReady } = useApp()
   const [scale, setScale] = useState(1)
   const [pos, setPos] = useState({ x: 0, y: 0 })
   const [showShare, setShowShare] = useState(null)
@@ -255,6 +255,19 @@ export default function ArtworkDetail() {
       el.removeEventListener('wheel', onWheel)
     }
   }, [scale])
+
+  if (!dataReady) {
+    return (
+      <div className="artwork-detail">
+        <div className="artwork-detail-header">
+          <button className="back-btn" onClick={() => nav('/gallery')}><ChevronLeft size={24} strokeWidth={1.5} /></button>
+        </div>
+        <div className="empty" style={{ marginTop: 100 }}>
+          <p>{t('common.loading')}</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!art) {
     return (

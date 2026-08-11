@@ -197,7 +197,7 @@ export default function FocusSession() {
   }, [recentQuotes, recordQuote, setCurrentMix])
 
   // 保存残卷的统一逻辑：interruptReason 区分 'abandoned'（主动放弃）/'distracted'（长时间未放下手机）
-  const saveFragment = useCallback((interruptReason) => {
+  const saveFragment = useCallback(async (interruptReason) => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
     stopAnalysis()
     const engine = engineRef.current
@@ -205,7 +205,7 @@ export default function FocusSession() {
     const elapsedSec = Math.round((Date.now() - startTimeRef.current) / 1000)
     const elapsedMin = Math.max(1, elapsedSec)
     const reasonLabel = interruptReason === 'distracted' ? t('focusSession.fragmentDistracted') : t('focusSession.fragmentAbandoned')
-    addArtwork({
+    await addArtwork({
       title: `${reasonLabel} ${t('focusSession.atMin')} ${elapsedMin}`,
       curveType: 'Suminagashi',
       previewUrl: url,
@@ -227,10 +227,9 @@ export default function FocusSession() {
     if (!permanentlyFaded) return
     if (savedByDistractRef.current) return
     savedByDistractRef.current = true
-    saveFragment('distracted')
     fadeOut(0.8)
     stopAll()
-    navigate('/gallery')
+    saveFragment('distracted').then(() => navigate('/gallery'))
   }, [permanentlyFaded, saveFragment, navigate])
 
   // 绘制阶段：初始化水墨引擎 + 加载音乐 + 运行动画循环
@@ -404,16 +403,16 @@ export default function FocusSession() {
   }, [phase])
 
   // 放弃会话 → 保存残卷（主动放弃）
-  const handleAbandon = useCallback(() => {
-    saveFragment('abandoned')
+  const handleAbandon = useCallback(async () => {
     fadeOut(0.8)
     stopAll()
+    await saveFragment('abandoned')
     navigate('/gallery')
   }, [saveFragment, navigate])
 
   // 保存完成的作品
-  const handleSave = useCallback(() => {
-    addArtwork({
+  const handleSave = useCallback(async () => {
+    await addArtwork({
       title: `${t('focusSession.inkFlow')} · ${new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })}`,
       curveType: 'Suminagashi',
       previewUrl,
