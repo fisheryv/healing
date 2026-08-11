@@ -34,6 +34,11 @@ function resolvePbUrl() {
 const PB_URL = resolvePbUrl()
 export const pb = new PocketBase(PB_URL)
 
+// 关闭 SDK 的自动取消：上传 artwork（大文件、慢网络）时，若有其他 PB 请求并发，
+// SDK 会 auto-cancel 正在进行的 create，导致文件已传到后端但客户端报错。
+// 本应用是普通 CRUD，不依赖 auto-cancellation（那是给搜索框防抖用的）。
+pb.autoCancellation(false)
+
 // 调试：在控制台暴露当前 PB URL，方便排查
 if (typeof window !== 'undefined') {
   window.__PB_URL__ = PB_URL

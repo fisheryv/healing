@@ -26,5 +26,17 @@ export default defineConfig({
     host: true,
     port: 4173,
     allowedHosts: ['.trycloudflare.com'],
+    proxy: {
+      // 与 server.proxy 一致：preview 模式下也需要把 /api /_ 转发到 PocketBase
+      '/api': {
+        target: 'http://127.0.0.1:8090',
+        changeOrigin: true,
+      },
+      '/_': {
+        target: 'http://127.0.0.1:8090',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
 })
