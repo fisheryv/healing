@@ -51,6 +51,7 @@ const translations = {
     appName: { zh: '希音', en: 'Healing' },
     sub3: { zh: '开启一段艺术与心灵的觉知之旅。', en: 'Start a mindful journey of art and spirit.' },
     startBtn: { zh: '开始', en: 'Start' },
+    swipeHint: { zh: '向左滑动进入', en: 'Swipe left to continue' },
   },
 
   // ====== Login ======
@@ -239,10 +240,18 @@ const translations = {
     feedback: { zh: '意见反馈', en: 'Feedback' },
     logout: { zh: '退出登录', en: 'Logout' },
     language: { zh: '语言', en: 'Language' },
+    theme: { zh: '外观', en: 'Appearance' },
     logoutTitle: { zh: '退出登录', en: 'Logout' },
     logoutConfirm: { zh: '确定要退出登录吗？你的专注数据将保留在此设备上。', en: 'Are you sure you want to log out? Your focus data will be kept on this device.' },
     sessionsUnit: { zh: '次', en: 'session' },
     galleryArtworks: { zh: '作品数', en: 'Artworks' },
+  },
+
+  // ====== Theme ======
+  theme: {
+    light: { zh: '浅色', en: 'Light' },
+    dark: { zh: '深色', en: 'Dark' },
+    system: { zh: '跟随系统', en: 'System' },
   },
 
   // ====== Settings Page ======

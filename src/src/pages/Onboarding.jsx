@@ -4,7 +4,7 @@ import { useApp } from '../store.jsx'
 
 export default function Onboarding() {
   const nav = useNavigate()
-  const { markOnboardingSeen, t } = useApp()
+  const { markOnboardingSeen, resolvedTheme, t } = useApp()
   const [current, setCurrent] = useState(0)
   const touchStartX = useRef(0)
   const touchDelta = useRef(0)
@@ -52,7 +52,7 @@ export default function Onboarding() {
         {/* Slide 1: image bottom-left, text top-right */}
         <div className="onboarding-slide slide-1">
           <div className="slide-1-image">
-            <img src="assets/onboarding01.png" alt="" />
+            <img src={resolvedTheme === 'dark' ? 'assets/onboarding01.png' : 'assets/onboarding01_light.png'} alt="" />
           </div>
           <div className={`slide-1-text ${current === 0 ? 'active' : ''}`}>
             <h1 className="onboarding-title">{t('onboarding.title1')}</h1>
@@ -63,7 +63,7 @@ export default function Onboarding() {
         {/* Slide 2: image bottom-right, text top-left */}
         <div className="onboarding-slide slide-2">
           <div className="slide-2-image">
-            <img src="assets/onboarding02.png" alt="" />
+            <img src={resolvedTheme === 'dark' ? 'assets/onboarding02.png' : 'assets/onboarding02_light.png'} alt="" />
           </div>
           <div className={`slide-2-text ${current === 1 ? 'active' : ''}`}>
             <h1 className="onboarding-title">{t('onboarding.title2')}</h1>
@@ -79,7 +79,7 @@ export default function Onboarding() {
               <div className="onboarding-app-name">{t('onboarding.appName')}</div>
             </div>
             <div className="slide-3-image">
-              <img src="assets/onboarding03.png" alt="" />
+              <img src={resolvedTheme === 'dark' ? 'assets/onboarding03.png' : 'assets/onboarding03_light.png'} alt="" />
             </div>
             <div className={`slide-3-bottom ${current === 2 ? 'active' : ''}`}>
               <p className="onboarding-subtitle" style={{ textAlign: 'center' }}>{t('onboarding.sub3')}</p>
@@ -94,6 +94,9 @@ export default function Onboarding() {
           <div key={i} className={`onboarding-dot ${i === current ? 'active' : ''}`} onClick={() => goTo(i)} />
         ))}
       </div>
+      {current < 2 && (
+        <div className="onboarding-swipe-hint">‹  {t('onboarding.swipeHint')}</div>
+      )}
     </div>
   )
 }

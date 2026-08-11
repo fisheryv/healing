@@ -15,7 +15,7 @@ export default function Player() {
   const { id } = useParams()
   const nav = useNavigate()
   const audioRef = useRef(null)
-  const { favorites, toggleFavorite, setCurrentMix, currentMix, lang, t } = useApp()
+  const { favorites, toggleFavorite, setCurrentMix, currentMix, lang, resolvedTheme, t } = useApp()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -349,9 +349,9 @@ export default function Player() {
       </div>
 
       <div className="player-hint">
-        <img className="airpod airpod-left" src="assets/airpod.png" alt="" />
+        <img className="airpod airpod-left" src={resolvedTheme === 'dark' ? 'assets/airpod_white.png' : 'assets/airpod.png'} alt="" />
         <span>{t('focusConfig.bestWithHeadphones')}</span>
-        <img className="airpod airpod-right" src="assets/airpod.png" alt="" />
+        <img className="airpod airpod-right" src={resolvedTheme === 'dark' ? 'assets/airpod_white.png' : 'assets/airpod.png'} alt="" />
       </div>
 
       {autoplayBlocked && !isPlaying && (

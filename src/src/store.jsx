@@ -22,6 +22,26 @@ const AppContext = createContext(null)
 
 const STORAGE_KEY = 'healing_app_state_v1'
 const LANG_KEY = 'healing_app_lang_v1'
+const THEME_KEY = 'healing_app_theme_v1'
+
+// 解析最终主题：system 模式查 matchMedia，否则直接返回
+function resolveTheme(mode) {
+  if (mode === 'system') {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+    return 'light'
+  }
+  return mode
+}
+
+// 把主题应用到 <html data-theme>
+function applyTheme(mode) {
+  const resolved = resolveTheme(mode)
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.theme = resolved
+  }
+}
 
 // ====== localStorage 持久化（仅本地偏好：onboardingSeen / settings） ======
 function loadState() {
@@ -93,6 +113,36 @@ export function AppProvider({ children }) {
   const changeLang = useCallback((newLang) => {
     setLang(newLang)
     try { localStorage.setItem(LANG_KEY, newLang) } catch (e) {}
+  }, [])
+
+  // 主题：light / dark / system，独立持久化
+  const [theme, setThemeState] = useState(() => {
+    try {
+      return localStorage.getItem(THEME_KEY) || 'system'
+    } catch (e) {
+      return 'system'
+    }
+  })
+  const [resolvedTheme, setResolvedTheme] = useState(() => resolveTheme(theme))
+
+  // system 模式下监听系统主题变化
+  useEffect(() => {
+    applyTheme(theme)
+    setResolvedTheme(resolveTheme(theme))
+    if (theme !== 'system' || typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = () => {
+      const r = resolveTheme('system')
+      setResolvedTheme(r)
+      document.documentElement.dataset.theme = r
+    }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [theme])
+
+  const changeTheme = useCallback((newTheme) => {
+    setThemeState(newTheme)
+    try { localStorage.setItem(THEME_KEY, newTheme) } catch (e) {}
   }, [])
 
   // 本地偏好持久化（业务数据由 PB 负责，不再写 localStorage）
@@ -221,13 +271,14 @@ export function AppProvider({ children }) {
       settings, setSettings,
       recentQuotes, recordQuote,
       lang, setLang: changeLang,
+      theme, setTheme: changeTheme, resolvedTheme,
       authReady,
       dataReady,
       t: (key, params) => translate(lang, key, params)
     }),
     [user, onboardingSeen, markOnboardingSeen, favorites, presets, artworks, currentMix, settings,
      toggleFavorite, addArtwork, deleteArtwork, savePreset, deletePreset, isPresetNameExist,
-     recentQuotes, recordQuote, lang, changeLang, authReady, dataReady]
+     recentQuotes, recordQuote, lang, changeLang, theme, changeTheme, resolvedTheme, authReady, dataReady]
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

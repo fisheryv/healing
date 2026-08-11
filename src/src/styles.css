@@ -11,11 +11,48 @@
   --canvas-line: #f1efe8;
   --serif-en: 'Cormorant Garamond', 'Noto Serif SC', serif;
   --serif-cn: 'Noto Serif SC', 'Cormorant Garamond', serif;
+  /* 语义变量（深色模式可重定义） */
+  --shell-bg: #efefee;
+  --nav-bg: rgba(255, 255, 255, 0.95);
+  --card-focus: #dee4f4;
+  --card-mix: #fbede0;
+  --btn-focus: #f9d2e2;
+  --heatmap-empty: #ebedf0;
+  --overlay-light: rgba(255, 255, 255, 0.7);
+  --scrollbar-track: rgba(0, 0, 0, 0.06);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] {
+  --bg: #1a1a1a;
+  --bg-soft: #242424;
+  --ink: #e8e6e3;
+  --ink-soft: #a8a6a3;
+  --ink-muted: #6a6865;
+  --line: #333333;
+  --line-strong: #444444;
+  --accent: #e8e6e3;
+  --canvas-bg: #0c0c0c;
+  --canvas-line: #f1efe8;
+  --shell-bg: #0f0f0f;
+  --nav-bg: rgba(26, 26, 26, 0.95);
+  --card-focus: #2a3344;
+  --card-mix: #3a2e22;
+  --btn-focus: #3a2330;
+  --heatmap-empty: #2a2a2a;
+  --overlay-light: rgba(0, 0, 0, 0.7);
+  --scrollbar-track: rgba(255, 255, 255, 0.06);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.25);
 }
 
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+html {
+  color-scheme: light dark;
 }
 
 html, body, #root {
@@ -56,7 +93,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #efefee;
+  background: var(--shell-bg);
   padding: 16px 0;
 }
 
@@ -103,7 +140,7 @@ a {
   right: 0;
   bottom: 0;
   height: 64px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--nav-bg);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--line);
   display: flex;
@@ -196,7 +233,7 @@ a {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   background: var(--ink);
-  color: #fff;
+  color: var(--bg);
   transition: all 0.2s ease;
 }
 
@@ -255,15 +292,15 @@ a {
 }
 
 .card-hero.focus-entry {
-  background: #DEE4F4;
-  border-color: #DEE4F4;
+  background: var(--card-focus);
+  border-color: var(--card-focus);
   position: relative;
   overflow: hidden;
 }
 
 .card-hero.mix-entry {
-  background: #fbede0;
-  border-color: #fbede0;
+  background: var(--card-mix);
+  border-color: var(--card-mix);
   position: relative;
   overflow: hidden;
   margin-top: 22px;
@@ -293,8 +330,8 @@ a {
 }
 
 .focus-start-btn {
-  background: #F9D2E2;
-  border-color: #F9D2E2;
+  background: var(--btn-focus);
+  border-color: var(--btn-focus);
   color: var(--ink);
   display: inline-flex;
   align-items: center;
@@ -942,6 +979,25 @@ a {
   cursor: pointer;
 }
 
+.onboarding-swipe-hint {
+  position: absolute;
+  bottom: auto;
+  top: 20px;
+  right: 20px;
+  font-size: 16px;
+  font-family: var(--serif-en);
+  color: var(--ink-soft);
+  letter-spacing: 0.5px;
+  animation: swipe-hint-pulse 1.5s ease-in-out infinite;
+  z-index: 10;
+  pointer-events: none;
+}
+
+@keyframes swipe-hint-pulse {
+  0%, 100% { opacity: 0.4; transform: translateX(0); }
+  50% { opacity: 0.8; transform: translateX(-4px); }
+}
+
 .onboarding-dot.active {
   background: var(--ink);
   width: 20px;
@@ -1072,7 +1128,7 @@ a {
 
 .code-btn:hover:not(.disabled) {
   background: var(--ink);
-  color: #fff;
+  color: var(--bg);
 }
 
 .code-btn.disabled {
@@ -2048,7 +2104,7 @@ a {
   width: 14px;
   height: 14px;
   border-radius: 2px;
-  background: #ebedf0;
+  background: var(--heatmap-empty);
 }
 
 .heatmap-cell.interactive {
@@ -2066,7 +2122,7 @@ a {
   position: relative;
   height: 6px;
   margin-top: 10px;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--scrollbar-track);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -2077,7 +2133,7 @@ a {
   left: 0;
   height: 100%;
   min-width: 30px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
   cursor: grab;
   transition: background 0.15s;
@@ -2196,7 +2252,7 @@ a {
 
 .lang-btn.active {
   background: var(--ink);
-  color: #fff;
+  color: var(--bg);
 }
 
 .switch {
@@ -2459,7 +2515,7 @@ a {
   border: 1px solid var(--ink);
   border-radius: 999px;
   background: var(--ink);
-  color: #fff;
+  color: var(--bg);
   font-size: 15px;
   font-family: var(--serif-en);
   letter-spacing: 0.06em;
@@ -2590,7 +2646,7 @@ a {
   height: 64px;
   border-radius: 50%;
   background: var(--ink);
-  color: white;
+  color: var(--bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2666,7 +2722,7 @@ a {
   text-align: center;
   font-family: var(--serif-en);
   font-size: 16px;
-  color: #000;
+  color: var(--ink-muted);
   letter-spacing: 0.1em;
   display: flex;
   align-items: center;
@@ -2692,7 +2748,7 @@ a {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--overlay-light);
   z-index: 10;
   cursor: pointer;
   font-family: var(--serif-en);
@@ -2763,7 +2819,7 @@ a {
 .sheet .pill.checked {
   border-color: var(--ink);
   background: var(--ink);
-  color: #fff;
+  color: var(--bg);
 }
 
 .sheet .pill.disabled {

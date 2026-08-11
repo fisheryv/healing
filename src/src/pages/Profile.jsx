@@ -11,8 +11,9 @@ const CELL_SIZE = 14
 const CELL_GAP = 3
 const WEEK_WIDTH = CELL_SIZE + CELL_GAP
 
-// 绿色系配色（PRD）
-const LEVELS = ['#ebedf0', '#033a16', '#196c2e', '#2ea043', '#56d364']
+// 绿色系配色（PRD）— level 0 根据主题切换
+const LEVELS_LIGHT = ['#ebedf0', '#033a16', '#196c2e', '#2ea043', '#56d364']
+const LEVELS_DARK = ['#2a2a2a', '#033a16', '#196c2e', '#2ea043', '#56d364']
 
 function getLevel(count) {
   if (count === 0) return 0
@@ -128,8 +129,9 @@ function calcStreaks(records) {
 }
 
 export default function Profile() {
-  const { user, setUser, artworks, settings, setSettings, lang, setLang, t } = useApp()
+  const { user, setUser, artworks, settings, setSettings, lang, setLang, theme, setTheme, resolvedTheme, t } = useApp()
   const nav = useNavigate()
+  const LEVELS = resolvedTheme === 'dark' ? LEVELS_DARK : LEVELS_LIGHT
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const avatarInputRef = useRef(null)
@@ -335,6 +337,16 @@ export default function Profile() {
           )}
           <div className="id">{user?.account || t('common.guest')}</div>
         </div>
+        <div className="lang-selector" style={{ marginLeft: 'auto', alignSelf: 'center' }}>
+          <button
+            className={'lang-btn' + (lang === 'en' ? ' active' : '')}
+            onClick={() => setLang('en')}
+          >EN</button>
+          <button
+            className={'lang-btn' + (lang === 'zh' ? ' active' : '')}
+            onClick={() => setLang('zh')}
+          >中</button>
+        </div>
       </div>
 
       <div className="heatmap">
@@ -451,21 +463,20 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="settings-group">{t('profile.about')}</div>
+      <div className="settings-group">{t('profile.theme')}</div>
       <div className="settings-list">
         <div className="settings-row">
-          <span>{t('profile.language')}</span>
+          <span>{t('profile.theme')}</span>
           <div className="lang-selector">
-            <button
-              className={'lang-btn' + (lang === 'en' ? ' active' : '')}
-              onClick={() => setLang('en')}
-            >English</button>
-            <button
-              className={'lang-btn' + (lang === 'zh' ? ' active' : '')}
-              onClick={() => setLang('zh')}
-            >中文</button>
+            <button className={'lang-btn' + (theme === 'light' ? ' active' : '')} onClick={() => setTheme('light')}>{t('theme.light')}</button>
+            <button className={'lang-btn' + (theme === 'dark' ? ' active' : '')} onClick={() => setTheme('dark')}>{t('theme.dark')}</button>
+            <button className={'lang-btn' + (theme === 'system' ? ' active' : '')} onClick={() => setTheme('system')}>{t('theme.system')}</button>
           </div>
         </div>
+      </div>
+
+      <div className="settings-group">{t('profile.about')}</div>
+      <div className="settings-list">
         <div className="settings-row"><span>{t('profile.version')}</span><span className="arrow">v0.1.0</span></div>
         <div className="settings-row" onClick={() => nav('/about/terms')} style={{ cursor: 'pointer' }}>
           <span>{t('profile.terms')}</span><span className="arrow">›</span>

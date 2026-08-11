@@ -16,7 +16,7 @@ function localized(field, lang) {
 export default function FocusConfig() {
   const nav = useNavigate()
   const location = useLocation()
-  const { presets, currentMix, setCurrentMix, settings, lang, t } = useApp()
+  const { presets, currentMix, setCurrentMix, settings, lang, resolvedTheme, t } = useApp()
   const [duration, setDuration] = useState(25)
   const [showPicker, setShowPicker] = useState(false)
   const [activeMix, setActiveMix] = useState(location.state?.mix || currentMix || presets[0] || null)
@@ -82,9 +82,9 @@ export default function FocusConfig() {
 
       {activeMix?.binaural && (
         <div className="headphone-hint">
-          <img className="airpod airpod-left" src="assets/airpod.png" alt="" />
+          <img className="airpod airpod-left" src={resolvedTheme === 'dark' ? 'assets/airpod_white.png' : 'assets/airpod.png'} alt="" />
           <span>{t('focusConfig.bestWithHeadphones')}</span>
-          <img className="airpod airpod-right" src="assets/airpod.png" alt="" />
+          <img className="airpod airpod-right" src={resolvedTheme === 'dark' ? 'assets/airpod_white.png' : 'assets/airpod.png'} alt="" />
         </div>
       )}
 
