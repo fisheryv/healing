@@ -43,6 +43,34 @@ NGINX_CONF="/etc/nginx/sites-available/healing"
 NGINX_LINK="/etc/nginx/sites-enabled/healing"
 NGINX_DEFAULT="/etc/nginx/sites-enabled/default"
 
+# ---------- 镜像源（中国大陆服务器使用国内镜像加速）----------
+# GitHub releases 和 nodejs.org 在国内可能无法直接访问，使用镜像
+# 设置 USE_MIRROR=false 可强制使用官方源
+USE_MIRROR=true
+
+# Node.js 镜像（npmmirror 淘宝镜像）
+NODE_MIRROR="https://npmmirror.com/mirrors/node"
+
+# PocketBase 镜像（ghproxy 加速 GitHub releases）
+PB_MIRROR="https://mirror.ghproxy.com"
+
+# 检测是否需要使用镜像：尝试访问 GitHub，3 秒超时则启用镜像
+check_mirror_needed() {
+    if [ "$USE_MIRROR" = false ]; then
+        return 1
+    fi
+    info "检测 GitHub 连通性..."
+    if curl -sf --connect-timeout 5 --max-time 10 "https://github.com" -o /dev/null 2>/dev/null; then
+        info "GitHub 可直接访问，使用官方源"
+        USE_MIRROR=false
+        return 1
+    else
+        warn "GitHub 不可直接访问，启用国内镜像"
+        USE_MIRROR=true
+        return 0
+    fi
+}
+
 # 可配置参数（可通过命令行覆盖）
 DOMAIN=""
 PB_URL=""
@@ -194,15 +222,15 @@ install_node() {
 
     if [ "$PKG_MGR" = "apt-get" ]; then
         info "通过 NodeSource 安装 Node.js 22.x LTS..."
-        if curl -fsSL https://deb.nodesource.com/setup_22.x | bash -; then
+        if curl -fsSL --max-time 15 https://deb.nodesource.com/setup_22.x | bash -; then
             $PKG_INSTALL nodejs && node_installed=true
         fi
     elif [ "$PKG_MGR" = "yum" ] || [ "$PKG_MGR" = "dnf" ]; then
         info "尝试通过 NodeSource 安装 Node.js 22.x..."
-        if curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - 2>/dev/null; then
+        if curl -fsSL --max-time 15 https://rpm.nodesource.com/setup_22.x | bash - 2>/dev/null; then
             $PKG_INSTALL nodejs && node_installed=true
         else
-            warn "NodeSource 不支持此系统，改用官方二进制安装..."
+            warn "NodeSource 不支持此系统或网络不可达，改用官方二进制安装..."
         fi
     elif [ "$PKG_MGR" = "apk" ]; then
         $PKG_INSTALL nodejs npm && node_installed=true
@@ -222,7 +250,12 @@ install_node() {
             *) error "不支持的 CPU 架构: $arch"; exit 1 ;;
         esac
 
-        local node_url="https://nodejs.org/dist/${node_version}/node-${node_version}-linux-${arch}.tar.xz"
+        local node_url
+        if [ "$USE_MIRROR" = true ]; then
+            node_url="${NODE_MIRROR}/${node_version}/node-${node_version}-linux-${arch}.tar.xz"
+        else
+            node_url="https://nodejs.org/dist/${node_version}/node-${node_version}-linux-${arch}.tar.xz"
+        fi
         local tmp_node
         tmp_node=$(mktemp -d)
         info "下载: $node_url"
@@ -268,9 +301,20 @@ install_pnpm() {
     fi
 
     # 使用 corepack（Node 16+ 自带）或 npm 全局安装
+    # 如果启用镜像，先配置 npm 使用淘宝 registry（pnpm 安装也走这个 registry）
+    if [ "$USE_MIRROR" = true ]; then
+        info "配置 npm 使用淘宝镜像源..."
+        npm config set registry https://registry.npmmirror.com
+    fi
+
     if command -v corepack &>/dev/null; then
         corepack enable
-        corepack prepare pnpm@latest --activate
+        # 如果启用镜像，让 corepack 也走淘宝 registry 下载 pnpm
+        if [ "$USE_MIRROR" = true ]; then
+            COREPACK_NPM_REGISTRY="https://registry.npmmirror.com" corepack prepare pnpm@latest --activate
+        else
+            corepack prepare pnpm@latest --activate
+        fi
     else
         npm install -g pnpm@latest
     fi
@@ -328,7 +372,13 @@ install_pocketbase() {
             ;;
     esac
 
-    local pb_url="https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_${arch}.zip"
+    local pb_url
+    local gh_url="https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_${arch}.zip"
+    if [ "$USE_MIRROR" = true ]; then
+        pb_url="${PB_MIRROR}/${gh_url}"
+    else
+        pb_url="$gh_url"
+    fi
     local tmp_dir
     tmp_dir=$(mktemp -d)
 
@@ -390,6 +440,14 @@ build_frontend() {
     cd "$FRONTEND_DIR"
 
     info "安装前端依赖 (pnpm install)..."
+
+    # 如果启用镜像，配置 npm/pnpm 使用淘宝 registry
+    if [ "$USE_MIRROR" = true ]; then
+        info "配置 npm/pnpm 使用淘宝镜像源..."
+        npm config set registry https://registry.npmmirror.com
+        pnpm config set registry https://registry.npmmirror.com 2>/dev/null || true
+    fi
+
     pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 
     info "构建生产版本..."
@@ -727,6 +785,9 @@ if [ -n "$PB_URL" ]; then info "后端地址: $PB_URL"; else info "后端地址:
 
 # 1. 检测环境
 detect_pkg_manager
+
+# 1.5 检测是否需要镜像（GitHub 不可达时启用国内镜像）
+check_mirror_needed || true
 
 # 2. 安装系统依赖
 install_system_deps
