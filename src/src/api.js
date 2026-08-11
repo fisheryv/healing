@@ -54,7 +54,7 @@ function mapUser(record) {
   }
   return {
     id: record.id,
-    account: record.id,                  // 兼容旧代码里的 user.account
+    account: record.email || '',         // account 是登录账号（邮箱），不是 PB 的 id
     email: record.email || '',
     nickname: record.nickname || '',
     avatar: avatarUrl,                   // PB 的 URL 而不是 dataURL

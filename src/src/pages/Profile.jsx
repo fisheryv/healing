@@ -96,8 +96,11 @@ function calcStreaks(records) {
 
   const sortedDates = Array.from(dates).sort()
 
+  // 没有任何专注记录时，longest 应为 0
+  if (sortedDates.length === 0) return { longest: 0, streak: 0 }
+
   // 最长连续天数
-  let longest = 0
+  let longest = 1
   let current = 1
   for (let i = 1; i < sortedDates.length; i++) {
     const prev = new Date(sortedDates[i - 1])
@@ -105,12 +108,11 @@ function calcStreaks(records) {
     const diff = (cur - prev) / (1000 * 60 * 60 * 24)
     if (diff === 1) {
       current++
-    } else {
       longest = Math.max(longest, current)
+    } else {
       current = 1
     }
   }
-  longest = Math.max(longest, current, sortedDates.length > 0 ? 1 : 0)
 
   // 当前连续天数（从今天往前数）
   const today = new Date()
@@ -418,7 +420,6 @@ export default function Profile() {
         <Stat num={totalComplete} label={t('profile.sessions')} />
         <Stat num={streak} label={t('profile.streak')} />
         <Stat num={longest} label={t('profile.longestStreak')} />
-        <Stat num={artworks.length} label={t('profile.galleryArtworks')} />
       </div>
 
       <div className="settings-group">{t('profile.focusSettings')}</div>

@@ -86,6 +86,8 @@ export default function FocusSession() {
   const distractStartRef = useRef(0)
   // 分心倒计时定时器
   const distractTimerRef = useRef(null)
+  // 累计已暂停时长（ms）：分心期间不计时，恢复时把这段时长累加进来
+  const pausedTotalRef = useRef(0)
 
   // 组件卸载时确保停止所有音频（防止离开页面后音效继续播放）
   useEffect(() => {
@@ -114,11 +116,12 @@ export default function FocusSession() {
     if (!settings.screenDown) return
 
     if (!screenDown && !distractedRef.current) {
-      // ── 触发分心：线条停止 + 褪色开始 + 15 秒倒计时 ──
+      // ── 触发分心：停表 + 线条停止 + 褪色开始 + 15 秒倒计时 ──
       distractedRef.current = true
       setDistracted(true)
+      // 记录暂停起点，后续 wallElapsed 计算时会扣除这段时长
+      distractStartRef.current = Date.now()
       if (!permanentlyFaded) {
-        distractStartRef.current = Date.now()
         setDistractCountdown(DISTRACT_COUNTDOWN_START)
         // 启动每秒倒计时
         if (distractTimerRef.current) clearInterval(distractTimerRef.current)
@@ -137,9 +140,14 @@ export default function FocusSession() {
         }, 250) // 250ms 刷新，倒计时更平滑
       }
     } else if (screenDown && distractedRef.current && !permanentlyFaded) {
-      // ── 恢复：15 秒内放回 => 褪色反向恢复，线条继续 ──
+      // ── 恢复：15 秒内放回 => 重新起表 + 褪色反向恢复 + 线条继续 ──
       distractedRef.current = false
       setDistracted(false)
+      // 累加本次暂停时长，wallElapsed 计算时会扣除
+      if (distractStartRef.current) {
+        pausedTotalRef.current += Date.now() - distractStartRef.current
+        distractStartRef.current = 0
+      }
       if (distractTimerRef.current) {
         clearInterval(distractTimerRef.current)
         distractTimerRef.current = null
@@ -202,7 +210,9 @@ export default function FocusSession() {
     stopAnalysis()
     const engine = engineRef.current
     const url = engine ? engine.captureDataURL() : null
-    const elapsedSec = Math.round((Date.now() - startTimeRef.current) / 1000)
+    const elapsedSec = Math.round((Date.now() - startTimeRef.current - pausedTotalRef.current
+      - (distractedRef.current && distractStartRef.current ? (Date.now() - distractStartRef.current) : 0)
+    ) / 1000)
     const elapsedMin = Math.max(1, elapsedSec)
     const reasonLabel = interruptReason === 'distracted' ? t('focusSession.fragmentDistracted') : t('focusSession.fragmentAbandoned')
     await addArtwork({
@@ -344,9 +354,15 @@ export default function FocusSession() {
       engine.render(now)
 
       // ── 进度推进（Demo: 1秒 = 1分钟） ──
-      stepCount += dt
+      // 分心时不累加 stepCount（画笔已停，进度也应暂停）
+      if (!isDistracted) {
+        stepCount += dt
+      }
       // 兜底：同时用墙钟判断，避免 raf 被限流/暂停导致 stepCount 累加不足
-      const wallElapsed = (Date.now() - startTimeRef.current) / 1000
+      // 分心期间扣除暂停时长，实现"停表"
+      const wallElapsed = (Date.now() - startTimeRef.current - pausedTotalRef.current
+        - (distractedRef.current && distractStartRef.current ? (Date.now() - distractStartRef.current) : 0)
+      ) / 1000
       if (stepCount >= durationSec || wallElapsed >= durationSec) {
         try {
           finishSession(engine)
@@ -374,7 +390,10 @@ export default function FocusSession() {
     //    导致 frame 循环里的进度判断无法触发。用 setInterval + 墙钟
     //    确保会话能按时结束（即使被限流，切回前台时也会立即触发）。
     const finishGuard = setInterval(() => {
-      const wallElapsed = (Date.now() - startTimeRef.current) / 1000
+      // 同样扣除暂停时长，确保分心期间不会触发会话结束
+      const wallElapsed = (Date.now() - startTimeRef.current - pausedTotalRef.current
+        - (distractedRef.current && distractStartRef.current ? (Date.now() - distractStartRef.current) : 0)
+      ) / 1000
       if (wallElapsed >= durationSec) {
         clearInterval(finishGuard)
         try {

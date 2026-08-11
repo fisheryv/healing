@@ -1,7 +1,25 @@
+# PocketBase
+pocketbase.exe
 pb_data/
+pb_data_backup.tar.gz
+*.tar.gz
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Dependencies
 node_modules/
+
+# OS files
 .DS_Store
+._*
+._pb_data
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
