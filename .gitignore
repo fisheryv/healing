@@ -54,3 +54,6 @@ backend/pb_data/
 
 # Source maps
 *.map
+
+# Vercel
+.vercel

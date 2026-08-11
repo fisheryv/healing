@@ -10,6 +10,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
+import { flushSync } from 'react-dom'
 import {
   auth, bindings, validateEmail, validatePhone, validatePassword,
   onAuthChange, initAuth,
@@ -134,21 +135,27 @@ export function AppProvider({ children }) {
   }, [])
 
   const addArtwork = useCallback(async (art) => {
-    // 等 PB 创建成功后再插入本地（保证 id + previewUrl 是真实的，避免 Gallery 竞态）
+    if (!art.previewUrl) {
+      console.error('[addArtwork] previewUrl 为 null，无法上传')
+      return null
+    }
     const res = await artworksApi.create(art, art.previewUrl)
     if (!res.ok) {
-      console.warn('[addArtwork]', res.error)
+      console.warn('[addArtwork] 保存失败:', res.error)
       return null
     }
     const newArt = res.artwork
-    setArtworks((prev) => {
-      const abandoned = newArt.status !== 'complete'
-      if (abandoned) return [newArt, ...prev]
-      const firstAbandonedIdx = prev.findIndex((a) => a.status !== 'complete')
-      if (firstAbandonedIdx === -1) return [newArt, ...prev]
-      const copy = [...prev]
-      copy.splice(firstAbandonedIdx, 0, newArt)
-      return copy
+    // flushSync 确保 state 同步更新，避免 navigate('/gallery') 时 Gallery 读到旧 state
+    flushSync(() => {
+      setArtworks((prev) => {
+        const abandoned = newArt.status !== 'complete'
+        if (abandoned) return [newArt, ...prev]
+        const firstAbandonedIdx = prev.findIndex((a) => a.status !== 'complete')
+        if (firstAbandonedIdx === -1) return [newArt, ...prev]
+        const copy = [...prev]
+        copy.splice(firstAbandonedIdx, 0, newArt)
+        return copy
+      })
     })
     return newArt
   }, [])
