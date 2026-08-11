@@ -188,24 +188,66 @@ install_node() {
         info "Node.js 未安装，正在安装..."
     fi
 
-    # 使用 NodeSource 官方源安装最新 LTS
+    # 安装 Node.js —— 优先用官方预编译二进制（兼容所有 Linux 发行版，包括 alinux4）
+    # 尝试顺序：apt-get 原生 → yum/dnf 原生 → 官方 tarball 通用兜底
+    local node_installed=false
+
     if [ "$PKG_MGR" = "apt-get" ]; then
         info "通过 NodeSource 安装 Node.js 22.x LTS..."
-        curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-        $PKG_INSTALL nodejs
+        if curl -fsSL https://deb.nodesource.com/setup_22.x | bash -; then
+            $PKG_INSTALL nodejs && node_installed=true
+        fi
     elif [ "$PKG_MGR" = "yum" ] || [ "$PKG_MGR" = "dnf" ]; then
-        curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
-        $PKG_INSTALL nodejs
+        info "尝试通过 NodeSource 安装 Node.js 22.x..."
+        if curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - 2>/dev/null; then
+            $PKG_INSTALL nodejs && node_installed=true
+        else
+            warn "NodeSource 不支持此系统，改用官方二进制安装..."
+        fi
     elif [ "$PKG_MGR" = "apk" ]; then
-        $PKG_INSTALL nodejs npm
+        $PKG_INSTALL nodejs npm && node_installed=true
     elif [ "$PKG_MGR" = "pacman" ]; then
-        $PKG_INSTALL nodejs npm
-    else
-        error "无法自动安装 Node.js，请手动安装 v$NODE_REQUIRED+ 后重试"
-        exit 1
+        $PKG_INSTALL nodejs npm && node_installed=true
     fi
 
-    info "Node.js 安装完成: $(node -v) ✓"
+    # 通用兜底：下载官方预编译 Node.js 二进制
+    if [ "$node_installed" = false ] || ! command -v node &>/dev/null; then
+        info "通过 Node.js 官方二进制安装 v22.x LTS..."
+        local node_version="v22.14.0"
+        local arch
+        arch=$(uname -m)
+        case $arch in
+            x86_64|amd64) arch="x64" ;;
+            aarch64|arm64) arch="arm64" ;;
+            *) error "不支持的 CPU 架构: $arch"; exit 1 ;;
+        esac
+
+        local node_url="https://nodejs.org/dist/${node_version}/node-${node_version}-linux-${arch}.tar.xz"
+        local tmp_node
+        tmp_node=$(mktemp -d)
+        info "下载: $node_url"
+        cd "$tmp_node"
+        if command -v wget &>/dev/null; then
+            wget -q --show-progress -O node.tar.xz "$node_url"
+        else
+            curl -fsSL -o node.tar.xz "$node_url"
+        fi
+        tar -xf node.tar.xz
+        local node_dir
+        node_dir=$(find . -maxdepth 1 -type d -name "node-*" | head -1)
+        # 复制到 /usr/local
+        cp -r "$node_dir"/* /usr/local/
+        cd "$SCRIPT_DIR"
+        rm -rf "$tmp_node"
+        node_installed=true
+    fi
+
+    if [ "$node_installed" = true ] && command -v node &>/dev/null; then
+        info "Node.js 安装完成: $(node -v) ✓"
+    else
+        error "Node.js 安装失败，请手动安装 v$NODE_REQUIRED+ 后重试"
+        exit 1
+    fi
 }
 
 # ---------- 安装 pnpm ----------
