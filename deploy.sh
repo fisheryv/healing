@@ -138,20 +138,36 @@ detect_pkg_manager() {
 install_system_deps() {
     section "检查并安装系统依赖"
 
-    # 基础工具
+    # 基础工具（通用，所有发行版都有）
     local need_install=()
     command -v curl &>/dev/null    || need_install+=("curl")
     command -v wget &>/dev/null    || need_install+=("wget")
     command -v tar &>/dev/null     || need_install+=("tar")
     command -v git &>/dev/null     || need_install+=("git")
-    command -v ufw &>/dev/null     || need_install+=("ufw")
+    command -v unzip &>/dev/null   || need_install+=("unzip")
 
     if [ ${#need_install[@]} -gt 0 ]; then
         info "安装基础工具: ${need_install[*]}"
         $PKG_UPDATE
-        $PKG_INSTALL "${need_install[@]}"
+        $PKG_INSTALL "${need_install[@]}" || true
     else
         info "基础工具已齐全"
+    fi
+
+    # 防火墙工具：Debian/Ubuntu 用 ufw，RHEL/CentOS 用 firewalld
+    # 仅安装对应发行版可用的防火墙工具，安装失败不阻塞部署
+    if [ "$PKG_MGR" = "apt-get" ]; then
+        if ! command -v ufw &>/dev/null; then
+            info "安装 ufw (Debian/Ubuntu 防火墙)..."
+            $PKG_INSTALL ufw 2>/dev/null || warn "ufw 安装失败，跳过防火墙配置"
+        fi
+    elif [ "$PKG_MGR" = "yum" ] || [ "$PKG_MGR" = "dnf" ]; then
+        if ! command -v firewall-cmd &>/dev/null; then
+            info "安装 firewalld (RHEL/CentOS 防火墙)..."
+            $PKG_INSTALL firewalld 2>/dev/null || warn "firewalld 安装失败，跳过防火墙配置"
+            systemctl enable firewalld 2>/dev/null || true
+            systemctl start firewalld 2>/dev/null || true
+        fi
     fi
 }
 
@@ -286,7 +302,7 @@ install_pocketbase() {
 
     # 解压（PocketBase 发布的是 zip 格式）
     if ! command -v unzip &>/dev/null; then
-        $PKG_INSTALL unzip
+        $PKG_INSTALL unzip || true
     fi
     unzip -o pb.zip
 
@@ -315,6 +331,12 @@ install_nginx() {
     fi
 
     info "安装 Nginx..."
+
+    # RHEL/CentOS/Alibaba Cloud Linux 需要 EPEL 仓库才有 nginx
+    if [ "$PKG_MGR" = "yum" ] || [ "$PKG_MGR" = "dnf" ]; then
+        $PKG_INSTALL epel-release 2>/dev/null || true
+    fi
+
     $PKG_INSTALL nginx
     info "Nginx 安装完成 ✓"
 }
