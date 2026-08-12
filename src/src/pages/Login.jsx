@@ -31,7 +31,7 @@ export default function Login() {
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
-  const { t } = useApp()
+  const { t, lang, setLang, theme, setTheme } = useApp()
   const nav = useNavigate()
   const pwdRef = useRef(null)
 
@@ -206,6 +206,18 @@ export default function Login() {
         <div className="login-footer">
           <span className="login-footer-text">{t('login.noAccount')}</span>
           <span className="text-link" style={{ fontWeight: 600 }} onClick={() => nav('/register')}> {t('login.signUp')}</span>
+        </div>
+
+        <div className="login-prefs">
+          <div className="lang-selector">
+            <button className={'lang-btn' + (lang === 'en' ? ' active' : '')} onClick={() => setLang('en')}>EN</button>
+            <button className={'lang-btn' + (lang === 'zh' ? ' active' : '')} onClick={() => setLang('zh')}>中</button>
+          </div>
+          <div className="lang-selector">
+            <button className={'lang-btn' + (theme === 'light' ? ' active' : '')} onClick={() => setTheme('light')}>{t('theme.light')}</button>
+            <button className={'lang-btn' + (theme === 'dark' ? ' active' : '')} onClick={() => setTheme('dark')}>{t('theme.dark')}</button>
+            <button className={'lang-btn' + (theme === 'system' ? ' active' : '')} onClick={() => setTheme('system')}>{t('theme.system')}</button>
+          </div>
         </div>
 
         {/* 第三方登录 */}

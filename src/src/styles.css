@@ -1085,6 +1085,15 @@ a {
   margin-bottom: 20px;
 }
 
+.login-prefs {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
 .login-footer-text {
   font-size: 13px;
   color: var(--ink-soft);
@@ -1388,8 +1397,22 @@ a {
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(241, 239, 232, 0.45);
+  color: rgba(241, 239, 232, 0.6);
+  padding: 6px 14px;
+  border: 1px solid rgba(241, 239, 232, 0.3);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
   z-index: 10;
+}
+
+.focus-abandon:hover {
+  color: rgba(241, 239, 232, 0.9);
+  border-color: rgba(241, 239, 232, 0.55);
+  background: rgba(0, 0, 0, 0.45);
 }
 
 .focus-headphone {
@@ -1424,7 +1447,15 @@ a {
 }
 
 .suminagashi-session .focus-abandon {
-  color: rgba(26, 26, 31, 0.5);
+  color: rgba(26, 26, 31, 0.6);
+  border-color: rgba(26, 26, 31, 0.25);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.suminagashi-session .focus-abandon:hover {
+  color: rgba(26, 26, 31, 0.9);
+  border-color: rgba(26, 26, 31, 0.45);
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .suminagashi-session .focus-headphone {
