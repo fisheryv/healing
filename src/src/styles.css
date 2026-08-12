@@ -1503,6 +1503,11 @@ a {
   background: #efeae0;
 }
 
+[data-theme="dark"] .suminagashi-countdown {
+  color: rgba(241, 239, 232, 0.85);
+  background: #0c0c0c;
+}
+
 /* 水墨画奖励页：和纸底色 + 深色文字 */
 .suminagashi-reward {
   color: #1a1a1f;
