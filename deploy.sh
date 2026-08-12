@@ -78,6 +78,8 @@ PB_URL=""
 PORT=80
 INSTALL_NGINX=true
 PB_PORT=8090
+# 持久化数据目录：放在 /opt/healing 外，避免 GitHub Actions 的 scp rm:true 每次部署清空数据
+PB_DATA_DIR="/var/lib/healing-pb_data"
 PB_ADMIN_EMAIL="admin@healing.local"
 PB_ADMIN_PASSWORD=""
 
@@ -640,7 +642,7 @@ create_pb_admin() {
         sleep 2
     fi
 
-    pocketbase superuser upsert "$PB_ADMIN_EMAIL" "$PB_ADMIN_PASSWORD" 2>&1 || {
+    pocketbase superuser upsert --dir="$PB_DATA_DIR" "$PB_ADMIN_EMAIL" "$PB_ADMIN_PASSWORD" 2>&1 || {
         warn "superuser upsert 命令失败"
         warn "可稍后通过 http://<服务器IP>:$PB_PORT/_/ 手动创建管理员"
     }
@@ -661,6 +663,19 @@ setup_pb_systemd() {
 
     local service_file="/etc/systemd/system/healing-pocketbase.service"
 
+    # 创建持久化数据目录（放在 /opt/healing 外，scp rm:true 删不到）
+    mkdir -p "$PB_DATA_DIR"
+
+    # 一次性迁移：如果旧位置 backend/pb_data 有数据且新目录为空，搬过去
+    # 注意：GitHub Actions 部署时 scp 会先清 /opt/healing，旧数据通常已不在；
+    # 这段迁移主要服务于"在服务器上手动重跑 deploy.sh"的场景。
+    local old_pb_data="$BACKEND_DIR/pb_data"
+    if [ -d "$old_pb_data" ] && [ -n "$(ls -A "$old_pb_data" 2>/dev/null)" ] && [ -z "$(ls -A "$PB_DATA_DIR" 2>/dev/null)" ]; then
+        info "检测到旧 pb_data，迁移到持久化位置 $PB_DATA_DIR ..."
+        cp -r "$old_pb_data"/. "$PB_DATA_DIR"/ 2>/dev/null || true
+        info "迁移完成 ✓"
+    fi
+
     cat > "$service_file" << EOF
 [Unit]
 Description=Healing PocketBase Server
@@ -670,7 +685,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$BACKEND_DIR
-ExecStart=/usr/local/bin/pocketbase serve --http=127.0.0.1:$PB_PORT --origins="*"
+ExecStart=/usr/local/bin/pocketbase serve --http=127.0.0.1:$PB_PORT --origins="*" --dir=$PB_DATA_DIR
 Restart=always
 RestartSec=5
 StandardOutput=journal
