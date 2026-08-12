@@ -589,22 +589,37 @@ EOF
 create_pb_admin() {
     section "配置 PocketBase 管理员"
 
-    # 如果没有传密码，交互式输入
+    # 如果没有传密码，生成一个随机密码（非交互环境无法手动输入）
     if [ -z "$PB_ADMIN_PASSWORD" ]; then
-        read -s -p "请输入 PocketBase 管理员密码 (至少 10 位): " PB_ADMIN_PASSWORD
-        echo ""
-        if [ ${#PB_ADMIN_PASSWORD} -lt 10 ]; then
-            error "密码至少 10 位"
-            exit 1
-        fi
+        warn "未提供管理员密码，生成随机密码..."
+        PB_ADMIN_PASSWORD=$(head -c 16 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 16)
+        info "生成的管理员密码: $PB_ADMIN_PASSWORD"
+        warn "请妥善保存此密码！也可稍后通过 Admin UI 修改"
     fi
 
     cd "$BACKEND_DIR"
     info "创建/更新管理员账号: $PB_ADMIN_EMAIL"
-    pocketbase superuser upsert "$PB_ADMIN_EMAIL" "$PB_ADMIN_PASSWORD" 2>/dev/null || {
-        warn "superuser upsert 命令失败（可能是首次启动尚未初始化数据库）"
-        warn "请稍后通过 http://<服务器IP>:$PB_PORT/_/ 手动创建管理员"
+
+    # PocketBase superuser upsert 需要直接访问数据库文件，
+    # 但 systemd 服务已启动并锁定了数据库。先临时停止服务，创建管理员，再重启。
+    if systemctl is-active --quiet healing-pocketbase 2>/dev/null; then
+        info "临时停止 PocketBase 服务以创建管理员..."
+        systemctl stop healing-pocketbase
+        sleep 2
+    fi
+
+    pocketbase superuser upsert "$PB_ADMIN_EMAIL" "$PB_ADMIN_PASSWORD" 2>&1 || {
+        warn "superuser upsert 命令失败"
+        warn "可稍后通过 http://<服务器IP>:$PB_PORT/_/ 手动创建管理员"
     }
+
+    # 重新启动 PocketBase 服务
+    if ! systemctl is-active --quiet healing-pocketbase 2>/dev/null; then
+        info "重新启动 PocketBase 服务..."
+        systemctl start healing-pocketbase
+        sleep 3
+    fi
+
     cd "$SCRIPT_DIR"
 }
 

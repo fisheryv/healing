@@ -32,15 +32,18 @@ jobs:
 
       - name: Execute deploy script on server
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          PB_ADMIN_PASSWORD: ${{ secrets.PB_ADMIN_PASSWORD }}
         with:
           host: 115.29.231.49
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: PB_ADMIN_PASSWORD
           script: |
             cd /opt/healing
             chmod +x deploy.sh
-            ./deploy.sh \
-              --port=80 \
-              --pb-port=8090 \
-              --pb-admin-email=admin@healing.local \
-              --pb-admin-password=${{ secrets.PB_ADMIN_PASSWORD }}
+            ARGS="--port=80 --pb-port=8090 --pb-admin-email=admin@healing.local"
+            if [ -n "$PB_ADMIN_PASSWORD" ]; then
+              ARGS="$ARGS --pb-admin-password=$PB_ADMIN_PASSWORD"
+            fi
+            ./deploy.sh $ARGS
