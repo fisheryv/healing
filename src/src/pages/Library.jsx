@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Play } from 'lucide-react'
 import { useApp } from '../store.jsx'
 import { officialMusic } from '../data.js'
 
@@ -160,15 +161,15 @@ export default function Library() {
               <button className="btn" onClick={() => nav('/mixer')}>{t('library.createPreset')}</button>
             </div>
           ) : (
-            presets.map((p) => (
+            presets.map((p, i) => (
               <SwipeRow
                 key={p.id}
                 onDelete={() => setDeleteTarget(p)}
                 deleteLabel={t('common.delete')}
                 t={t}
               >
-                <div className="row" onClick={() => { nav('/focus/config', { state: { mix: p } }) }} style={{ cursor: 'pointer' }}>
-                  <div className="thumb">≋</div>
+                <div className="row" onClick={() => nav(`/mix-player/${i}`)} style={{ cursor: 'pointer' }}>
+                  <div className="thumb"><Play size={18} strokeWidth={1.5} /></div>
                   <div className="info">
                     <div className="name">{p.name}</div>
                     <div className="meta">

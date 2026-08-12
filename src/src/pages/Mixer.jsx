@@ -651,6 +651,13 @@ ${JSON.stringify(binauralList)}
         </button>
       </div>
 
+      {/* 使用已保存的 mix：直接切到选择时间和 mix 的页面 */}
+      <div className="ai-assist-row">
+        <button className="btn ghost block" onClick={() => nav('/focus/config')}>
+          {t('mixer.useSavedMix')}
+        </button>
+      </div>
+
       <div className="mixer-actions">
         <button className="btn ghost" onClick={() => setShowSave(true)}>{t('mixer.save')}</button>
         <button className="btn" onClick={handleStart}>{t('mixer.beginFocus')}</button>

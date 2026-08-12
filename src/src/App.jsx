@@ -14,16 +14,17 @@ import Profile from './pages/Profile.jsx'
 import FocusConfig from './pages/FocusConfig.jsx'
 import FocusSession from './pages/FocusSession.jsx'
 import Player from './pages/Player.jsx'
+import MixPlayer from './pages/MixPlayer.jsx'
 import ArtworkDetail from './pages/ArtworkDetail.jsx'
 import BlogList from './pages/BlogList.jsx'
 import BlogDetail from './pages/BlogDetail.jsx'
 import SettingsPage, { AboutPage } from './pages/SettingsPage.jsx'
 
 const TABS = ['/home', '/library', '/mixer', '/gallery', '/profile']
-const FULLSCREEN = ['/onboarding', '/login', '/register', '/forgot', '/nickname-setup', '/focus/config', '/focus/session', '/player', '/artwork', '/settings', '/about', '/blog']
+const FULLSCREEN = ['/onboarding', '/login', '/register', '/forgot', '/nickname-setup', '/focus/config', '/focus/session', '/player', '/mix-player', '/artwork', '/settings', '/about', '/blog']
 
 // 需要登录才能访问的路径
-const PROTECTED = ['/home', '/library', '/mixer', '/gallery', '/profile', '/focus/config', '/focus/session', '/settings', '/about']
+const PROTECTED = ['/home', '/library', '/mixer', '/gallery', '/profile', '/focus/config', '/focus/session', '/settings', '/about', '/mix-player']
 
 function RequireAuth({ children }) {
   const { user, authReady } = useApp()
@@ -63,6 +64,7 @@ function Shell() {
             <Route path="/focus/config" element={<RequireAuth><FocusConfig /></RequireAuth>} />
             <Route path="/focus/session" element={<RequireAuth><FocusSession /></RequireAuth>} />
             <Route path="/player/:id" element={<RequireAuth><Player /></RequireAuth>} />
+            <Route path="/mix-player/:index" element={<RequireAuth><MixPlayer /></RequireAuth>} />
             <Route path="/artwork/:id" element={<RequireAuth><ArtworkDetail /></RequireAuth>} />
             <Route path="/blog" element={<RequireAuth><BlogList /></RequireAuth>} />
             <Route path="/blog/:id" element={<RequireAuth><BlogDetail /></RequireAuth>} />

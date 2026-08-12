@@ -398,6 +398,7 @@ const translations = {
     aiThinking: { zh: '思考中…', en: 'Thinking…' },
     aiApplied: { zh: 'AI 已为你配置 ✓', en: 'AI configured ✓' },
     aiError: { zh: '配置失败', en: 'Configuration failed' },
+    useSavedMix: { zh: '使用已保存的 mix', en: 'Use Saved Mix' },
   },
 
   // ====== Focus Session (key texts) ======
