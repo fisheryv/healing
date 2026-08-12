@@ -538,6 +538,9 @@ server {
     listen [::]:$PORT;
     server_name $server_name;
 
+    # 上传限制（artwork PNG 截图可能 >1MB，Nginx 默认 1MB 会 413）
+    client_max_body_size 20M;
+
     # 前端静态文件
     root /var/www/healing;
     index index.html;
