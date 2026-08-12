@@ -39,9 +39,10 @@ BACKEND_DIR="$SCRIPT_DIR/backend"
 PB_VERSION="0.27.1"
 NODE_REQUIRED="18"
 PNPM_VERSION="9"
-NGINX_CONF="/etc/nginx/sites-available/healing"
-NGINX_LINK="/etc/nginx/sites-enabled/healing"
-NGINX_DEFAULT="/etc/nginx/sites-enabled/default"
+# Nginx 配置路径（在 install_nginx 后根据发行版自动调整）
+NGINX_CONF=""
+NGINX_LINK=""
+NGINX_DEFAULT=""
 
 # ---------- 镜像源（中国大陆服务器使用国内镜像加速）----------
 # GitHub releases 和 nodejs.org 在国内可能无法直接访问，使用镜像
@@ -419,18 +420,46 @@ install_nginx() {
 
     if command -v nginx &>/dev/null; then
         info "Nginx 已安装: $(nginx -v 2>&1 | cut -d/ -f2) ✓"
-        return 0
+    else
+        info "安装 Nginx..."
+        # RHEL/CentOS/Alibaba Cloud Linux 需要 EPEL 仓库才有 nginx
+        if [ "$PKG_MGR" = "yum" ] || [ "$PKG_MGR" = "dnf" ]; then
+            $PKG_INSTALL epel-release 2>/dev/null || true
+        fi
+        $PKG_INSTALL nginx
+        info "Nginx 安装完成 ✓"
     fi
 
-    info "安装 Nginx..."
-
-    # RHEL/CentOS/Alibaba Cloud Linux 需要 EPEL 仓库才有 nginx
-    if [ "$PKG_MGR" = "yum" ] || [ "$PKG_MGR" = "dnf" ]; then
-        $PKG_INSTALL epel-release 2>/dev/null || true
+    # 根据发行版设置 Nginx 配置路径
+    # Debian/Ubuntu: sites-available/ + sites-enabled/
+    # RHEL/CentOS/Alibaba: conf.d/
+    if [ -d /etc/nginx/sites-available ] && [ -d /etc/nginx/sites-enabled ]; then
+        NGINX_CONF="/etc/nginx/sites-available/healing"
+        NGINX_LINK="/etc/nginx/sites-enabled/healing"
+        NGINX_DEFAULT="/etc/nginx/sites-enabled/default"
+        info "Nginx 配置路径: Debian/Ubuntu 布局 ($NGINX_CONF)"
+    elif [ -d /etc/nginx/conf.d ]; then
+        # 确保 nginx.conf 包含 conf.d
+        if ! grep -q "conf.d" /etc/nginx/nginx.conf 2>/dev/null; then
+            sed -i '/http {/,/}/ { /}/ a\    include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf 2>/dev/null || true
+        fi
+        NGINX_CONF="/etc/nginx/conf.d/healing.conf"
+        NGINX_LINK=""  # conf.d 下的文件自动被 include，不需要 symlink
+        NGINX_DEFAULT="/etc/nginx/conf.d/default.conf"
+        info "Nginx 配置路径: RHEL/CentOS 布局 ($NGINX_CONF)"
+    else
+        # 兜底：创建 Debian 布局
+        mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+        # 确保 nginx.conf 包含 sites-enabled
+        if ! grep -q "sites-enabled" /etc/nginx/nginx.conf 2>/dev/null; then
+            # 在 http 块末尾添加 include
+            sed -i '/http {/,/}/ { /}/ a\    include /etc/nginx/sites-enabled/*;' /etc/nginx/nginx.conf 2>/dev/null || true
+        fi
+        NGINX_CONF="/etc/nginx/sites-available/healing"
+        NGINX_LINK="/etc/nginx/sites-enabled/healing"
+        NGINX_DEFAULT="/etc/nginx/sites-enabled/default"
+        warn "Nginx 配置路径: 通用布局 ($NGINX_CONF)"
     fi
-
-    $PKG_INSTALL nginx
-    info "Nginx 安装完成 ✓"
 }
 
 # ---------- 构建前端 ----------
@@ -497,7 +526,10 @@ deploy_nginx() {
         server_name="_"  # 匹配所有
     fi
 
-    info "生成 Nginx 配置..."
+    # 确保配置目录存在
+    mkdir -p "$(dirname "$NGINX_CONF")"
+
+    info "生成 Nginx 配置 ($NGINX_CONF)..."
     cat > "$NGINX_CONF" << EOF
 server {
     listen $PORT;
@@ -557,14 +589,14 @@ server {
 }
 EOF
 
-    # 启用站点
-    if [ ! -L "$NGINX_LINK" ]; then
+    # 启用站点（Debian/Ubuntu 用 symlink，RHEL/CentOS 的 conf.d 自动 include 无需操作）
+    if [ -n "$NGINX_LINK" ] && [ ! -L "$NGINX_LINK" ]; then
         ln -s "$NGINX_CONF" "$NGINX_LINK"
     fi
 
-    # 禁用默认站点（避免冲突）
-    if [ -L "$NGINX_DEFAULT" ] && [ "$PORT" = "80" ]; then
-        warn "检测到默认站点占用 80 端口，正在禁用..."
+    # 禁用默认站点（避免 80 端口冲突）
+    if [ "$PORT" = "80" ] && [ -f "$NGINX_DEFAULT" ]; then
+        warn "检测到默认站点配置 $NGINX_DEFAULT，正在禁用..."
         rm -f "$NGINX_DEFAULT"
     fi
 
